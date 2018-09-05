@@ -1,0 +1,8 @@
+{
+  "passes": {
+    "background": [
+      "assets/shaders/standard/skybox.frag",
+      "assets/shaders/standard/default.vert"
+    ]
+  }
+}

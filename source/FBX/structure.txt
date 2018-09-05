@@ -1,0 +1,99 @@
+FBX
+  Connections
+    C "OO" 894075389 0
+    C "OO" 987892855 894075389
+    C "OO" 920984801 894075389
+    C "OP" 477513286 920984801 "DiffuseColor"
+    C "OO" 911631926 477513286
+  Objects
+    Texture 477513286 "Texture" ""
+      RelativeFilename "/home/nathan/src/plenary/Plenary/assets/images/suzzane.png"
+      Properties70
+        P "UVSet" "KString" "" "" "UVMap"
+        P "UseMaterial" "bool" "" "" 1
+        P "UseMipMap" "bool" "" "" 1
+      Media "Suzzane"
+      Version 202
+      TextureName "Texture"
+      Type "TextureVideoClip"
+      FileName "/home/nathan/src/plenary/Plenary/assets/images/suzzane.png"
+    Geometry 987892855 "Suzanne.002" "Mesh"
+      Edges Int32[23700]
+      Vertices Float64[23874]
+      PolygonVertexIndex Int32[47232]
+      Properties70
+      LayerElementNormal 0
+        Name ""
+        Version 101
+        ReferenceInformationType "Direct"
+        Normals Float64[141696]
+        MappingInformationType "ByPolygonVertex"
+      LayerElementColor 0
+        ColorIndex Int32[47232]
+        Name "Col"
+        Colors Float64[1096]
+        Version 101
+        ReferenceInformationType "IndexToDirect"
+        MappingInformationType "ByPolygonVertex"
+      LayerElementUV 0
+        Name "UVMap"
+        UV Float64[16316]
+        UVIndex Int32[47232]
+        Version 101
+        ReferenceInformationType "IndexToDirect"
+        MappingInformationType "ByPolygonVertex"
+      LayerElementMaterial 0
+        Name ""
+        Materials Int32[1]
+        Version 101
+        ReferenceInformationType "IndexToDirect"
+        MappingInformationType "AllSame"
+      Layer 0
+        LayerElement
+          TypedIndex 0
+          Type "LayerElementNormal"
+        LayerElement
+          TypedIndex 0
+          Type "LayerElementColor"
+        LayerElement
+          TypedIndex 0
+          Type "LayerElementUV"
+        LayerElement
+          TypedIndex 0
+          Type "LayerElementMaterial"
+        Version 100
+      GeometryVersion 124
+    Material 920984801 "Material" ""
+      ShadingModel "Phong"
+      MultiLayer 0
+      Properties70
+        P "EmissiveColor" "Color" "" "A" 0.7642737030982971 0.8000000715255737 0.7294957637786865
+        P "EmissiveFactor" "Number" "" "A" 0.0
+        P "AmbientColor" "Color" "" "A" 0.0 0.0 0.0
+        P "DiffuseColor" "Color" "" "A" 0.7642737030982971 0.8000000715255737 0.7294957637786865
+        P "DiffuseFactor" "Number" "" "A" 0.800000011920929
+        P "TransparentColor" "Color" "" "A" 1.0 1.0 1.0
+        P "SpecularColor" "Color" "" "A" 1.0 1.0 1.0
+        P "SpecularFactor" "Number" "" "A" 0.25
+        P "Shininess" "Number" "" "A" 9.607843137254903
+        P "ShininessExponent" "Number" "" "A" 9.607843137254903
+        P "ReflectionColor" "Color" "" "A" 1.0 1.0 1.0
+        P "ReflectionFactor" "Number" "" "A" 0.0
+      Version 102
+    Video 911631926 "Suzzane" "Clip"
+      Filename "/home/nathan/src/plenary/Plenary/assets/images/suzzane.png"
+      RelativeFilename "/home/nathan/src/plenary/Plenary/assets/images/suzzane.png"
+      Properties70
+        P "Path" "KString" "Url" "" "/home/nathan/src/plenary/Plenary/assets/images/suzzane.png"
+      UseMipMap 0
+      Type "Clip"
+    Model 894075389 "Suzanne" "Mesh"
+      MultiLayer 0
+      MultiTake 0
+      Shading 1
+      Properties70
+        P "Lcl Rotation" "Lcl Rotation" "" "A" -90.00000250447816 0.0 0.0
+        P "DefaultAttributeIndex" "int" "Integer" "" 0
+        P "InheritType" "enum" "" "" 1
+      Culling "CullingOff"
+      Version 232

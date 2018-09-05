@@ -1,0 +1,2117 @@
+type GLCommand
+  p::Ptr{Void}
+end
+
+function GetProcAddress end
+
+macro gl_function(specifier, checked = true)
+  arguments = map(specifier.args[1].args[2:end]) do arg
+    isa(arg, Symbol) ? Expr(:(::), arg) : arg
+  end
+  arg_names       = map(arg -> arg.args[1], arguments)
+  arg_exprs       = map(arg -> Expr(:call, arg.args[2], arg.args[1]), arguments)
+  return_type     = specifier.args[2]
+  input_types     = map(arg->arg.args[2], arguments)
+  func_name       = specifier.args[1].args[1]
+  func_name_sym   = Expr(:quote, func_name)
+  func_name_str   = string(func_name)
+  if func_name_str[1] == '_'
+    func_name_str = func_name_str[2:end]
+  end
+  ptr_expr        = :(GetProcAddress($func_name_str))
+  ptr_sym         = gensym( "$(func_name)_func_pointer")
+  ret = quote
+    const $ptr_sym = GLCommand(C_NULL)
+    function $func_name($(arg_names...))
+      if $ptr_sym.p::Ptr{Void} == C_NULL
+        $ptr_sym.p::Ptr{Void} = $ptr_expr
+      end
+      r = ccall($ptr_sym.p::Ptr{Void}, $return_type, ($(input_types...),), $(arg_exprs...))
+      $checked && checkerror()
+      r
+    end
+    export $(func_name)
+  end
+  return esc(ret)
+end
+
+macro gl_const(name, value, typ)
+  quote
+    $(esc(name)) = convert($(esc(typ)), $(esc(value)))
+    export $(esc(name))
+  end
+end
+
+macro gl_typealias(name, value)
+  quote
+    typealias $(esc(name)) $(esc(value))
+    export $(esc(name))
+  end
+end
+
+@gl_typealias GLvoid      Void
+@gl_typealias GLenum      Cuint
+@gl_typealias GLbitfield  Cuint
+@gl_typealias GLchar      Cchar
+@gl_typealias GLuchar     Cuchar
+@gl_typealias GLbyte      Cchar
+@gl_typealias GLubyte     Cuchar
+@gl_typealias GLshort     Cshort
+@gl_typealias GLushort    Cushort
+@gl_typealias GLint       Cint
+@gl_typealias GLuint      Cuint
+@gl_typealias GLint64     Clonglong
+@gl_typealias GLuint64    Culonglong
+@gl_typealias GLhalf      Float16
+@gl_typealias GLfloat     Cfloat
+@gl_typealias GLclampf    Cfloat
+@gl_typealias GLdouble    Cdouble
+@gl_typealias GLclampd    Cdouble
+@gl_typealias GLsizeiptr  Cptrdiff_t
+@gl_typealias GLintptr    Cptrdiff_t
+@gl_typealias GLsizei     Cint
+@gl_typealias GLboolean   Cuchar
+@gl_typealias GLsync      Ptr{Void}
+@gl_typealias GLDEBUGPROC Ptr{Void}
+
+@gl_const GL_DEPTH_BUFFER_BIT 0x00000100 GLbitfield
+@gl_const GL_STENCIL_BUFFER_BIT 0x00000400 GLbitfield
+@gl_const GL_COLOR_BUFFER_BIT 0x00004000 GLbitfield
+@gl_const GL_CONTEXT_FLAG_FORWARD_COMPATIBLE_BIT 0x00000001 GLbitfield
+@gl_const GL_CONTEXT_FLAG_DEBUG_BIT 0x00000002 GLbitfield
+@gl_const GL_CONTEXT_FLAG_ROBUST_ACCESS_BIT 0x00000004 GLbitfield
+@gl_const GL_CONTEXT_CORE_PROFILE_BIT 0x00000001 GLbitfield
+@gl_const GL_CONTEXT_COMPATIBILITY_PROFILE_BIT 0x00000002 GLbitfield
+@gl_const GL_MAP_READ_BIT 0x0001 GLbitfield
+@gl_const GL_MAP_WRITE_BIT 0x0002 GLbitfield
+@gl_const GL_MAP_INVALIDATE_RANGE_BIT 0x0004 GLbitfield
+@gl_const GL_MAP_INVALIDATE_BUFFER_BIT 0x0008 GLbitfield
+@gl_const GL_MAP_FLUSH_EXPLICIT_BIT 0x0010 GLbitfield
+@gl_const GL_MAP_UNSYNCHRONIZED_BIT 0x0020 GLbitfield
+@gl_const GL_MAP_PERSISTENT_BIT 0x0040 GLbitfield
+@gl_const GL_MAP_COHERENT_BIT 0x0080 GLbitfield
+@gl_const GL_DYNAMIC_STORAGE_BIT 0x0100 GLbitfield
+@gl_const GL_CLIENT_STORAGE_BIT 0x0200 GLbitfield
+@gl_const GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT 0x00000001 GLbitfield
+@gl_const GL_ELEMENT_ARRAY_BARRIER_BIT 0x00000002 GLbitfield
+@gl_const GL_UNIFORM_BARRIER_BIT 0x00000004 GLbitfield
+@gl_const GL_TEXTURE_FETCH_BARRIER_BIT 0x00000008 GLbitfield
+@gl_const GL_SHADER_IMAGE_ACCESS_BARRIER_BIT 0x00000020 GLbitfield
+@gl_const GL_COMMAND_BARRIER_BIT 0x00000040 GLbitfield
+@gl_const GL_PIXEL_BUFFER_BARRIER_BIT 0x00000080 GLbitfield
+@gl_const GL_TEXTURE_UPDATE_BARRIER_BIT 0x00000100 GLbitfield
+@gl_const GL_BUFFER_UPDATE_BARRIER_BIT 0x00000200 GLbitfield
+@gl_const GL_FRAMEBUFFER_BARRIER_BIT 0x00000400 GLbitfield
+@gl_const GL_TRANSFORM_FEEDBACK_BARRIER_BIT 0x00000800 GLbitfield
+@gl_const GL_ATOMIC_COUNTER_BARRIER_BIT 0x00001000 GLbitfield
+@gl_const GL_SHADER_STORAGE_BARRIER_BIT 0x00002000 GLbitfield
+@gl_const GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT 0x00004000 GLbitfield
+@gl_const GL_QUERY_BUFFER_BARRIER_BIT 0x00008000 GLbitfield
+@gl_const GL_ALL_BARRIER_BITS 0xFFFFFFFF GLbitfield
+@gl_const GL_SYNC_FLUSH_COMMANDS_BIT 0x00000001 GLbitfield
+@gl_const GL_VERTEX_SHADER_BIT 0x00000001 GLbitfield
+@gl_const GL_FRAGMENT_SHADER_BIT 0x00000002 GLbitfield
+@gl_const GL_GEOMETRY_SHADER_BIT 0x00000004 GLbitfield
+@gl_const GL_TESS_CONTROL_SHADER_BIT 0x00000008 GLbitfield
+@gl_const GL_TESS_EVALUATION_SHADER_BIT 0x00000010 GLbitfield
+@gl_const GL_COMPUTE_SHADER_BIT 0x00000020 GLbitfield
+@gl_const GL_ALL_SHADER_BITS 0xFFFFFFFF GLbitfield
+@gl_const GL_FALSE 0 GLboolean
+@gl_const GL_NO_ERROR 0 GLenum
+@gl_const GL_ZERO 0 GLenum
+@gl_const GL_NONE 0 GLenum
+@gl_const GL_TRUE 1 GLboolean
+@gl_const GL_ONE 1 GLenum
+@gl_const GL_INVALID_INDEX 0xFFFFFFFF Cuint
+@gl_const GL_TIMEOUT_IGNORED 0xFFFFFFFFFFFFFFFF Culonglong
+@gl_const GL_POINTS 0x0000 GLenum
+@gl_const GL_LINES 0x0001 GLenum
+@gl_const GL_LINE_LOOP 0x0002 GLenum
+@gl_const GL_LINE_STRIP 0x0003 GLenum
+@gl_const GL_TRIANGLES 0x0004 GLenum
+@gl_const GL_TRIANGLE_STRIP 0x0005 GLenum
+@gl_const GL_TRIANGLE_FAN 0x0006 GLenum
+@gl_const GL_QUADS 0x0007 GLenum
+@gl_const GL_LINES_ADJACENCY 0x000A GLenum
+@gl_const GL_LINE_STRIP_ADJACENCY 0x000B GLenum
+@gl_const GL_TRIANGLES_ADJACENCY 0x000C GLenum
+@gl_const GL_TRIANGLE_STRIP_ADJACENCY 0x000D GLenum
+@gl_const GL_PATCHES 0x000E GLenum
+@gl_const GL_NEVER 0x0200 GLenum
+@gl_const GL_LESS 0x0201 GLenum
+@gl_const GL_EQUAL 0x0202 GLenum
+@gl_const GL_LEQUAL 0x0203 GLenum
+@gl_const GL_GREATER 0x0204 GLenum
+@gl_const GL_NOTEQUAL 0x0205 GLenum
+@gl_const GL_GEQUAL 0x0206 GLenum
+@gl_const GL_ALWAYS 0x0207 GLenum
+@gl_const GL_SRC_COLOR 0x0300 GLenum
+@gl_const GL_ONE_MINUS_SRC_COLOR 0x0301 GLenum
+@gl_const GL_SRC_ALPHA 0x0302 GLenum
+@gl_const GL_ONE_MINUS_SRC_ALPHA 0x0303 GLenum
+@gl_const GL_DST_ALPHA 0x0304 GLenum
+@gl_const GL_ONE_MINUS_DST_ALPHA 0x0305 GLenum
+@gl_const GL_DST_COLOR 0x0306 GLenum
+@gl_const GL_ONE_MINUS_DST_COLOR 0x0307 GLenum
+@gl_const GL_SRC_ALPHA_SATURATE 0x0308 GLenum
+@gl_const GL_FRONT_LEFT 0x0400 GLenum
+@gl_const GL_FRONT_RIGHT 0x0401 GLenum
+@gl_const GL_BACK_LEFT 0x0402 GLenum
+@gl_const GL_BACK_RIGHT 0x0403 GLenum
+@gl_const GL_FRONT 0x0404 GLenum
+@gl_const GL_BACK 0x0405 GLenum
+@gl_const GL_LEFT 0x0406 GLenum
+@gl_const GL_RIGHT 0x0407 GLenum
+@gl_const GL_FRONT_AND_BACK 0x0408 GLenum
+@gl_const GL_INVALID_ENUM 0x0500 GLenum
+@gl_const GL_INVALID_VALUE 0x0501 GLenum
+@gl_const GL_INVALID_OPERATION 0x0502 GLenum
+@gl_const GL_STACK_OVERFLOW 0x0503 GLenum
+@gl_const GL_STACK_UNDERFLOW 0x0504 GLenum
+@gl_const GL_OUT_OF_MEMORY 0x0505 GLenum
+@gl_const GL_INVALID_FRAMEBUFFER_OPERATION 0x0506 GLenum
+@gl_const GL_CONTEXT_LOST 0x0507 GLenum
+@gl_const GL_CW 0x0900 GLenum
+@gl_const GL_CCW 0x0901 GLenum
+@gl_const GL_POINT_SIZE 0x0B11 GLenum
+@gl_const GL_POINT_SIZE_RANGE 0x0B12 GLenum
+@gl_const GL_SMOOTH_POINT_SIZE_RANGE 0x0B12 GLenum
+@gl_const GL_POINT_SIZE_GRANULARITY 0x0B13 GLenum
+@gl_const GL_SMOOTH_POINT_SIZE_GRANULARITY 0x0B13 GLenum
+@gl_const GL_LINE_SMOOTH 0x0B20 GLenum
+@gl_const GL_LINE_WIDTH 0x0B21 GLenum
+@gl_const GL_LINE_WIDTH_RANGE 0x0B22 GLenum
+@gl_const GL_SMOOTH_LINE_WIDTH_RANGE 0x0B22 GLenum
+@gl_const GL_LINE_WIDTH_GRANULARITY 0x0B23 GLenum
+@gl_const GL_SMOOTH_LINE_WIDTH_GRANULARITY 0x0B23 GLenum
+@gl_const GL_POLYGON_MODE 0x0B40 GLenum
+@gl_const GL_POLYGON_SMOOTH 0x0B41 GLenum
+@gl_const GL_CULL_FACE 0x0B44 GLenum
+@gl_const GL_CULL_FACE_MODE 0x0B45 GLenum
+@gl_const GL_FRONT_FACE 0x0B46 GLenum
+@gl_const GL_DEPTH_RANGE 0x0B70 GLenum
+@gl_const GL_DEPTH_TEST 0x0B71 GLenum
+@gl_const GL_DEPTH_WRITEMASK 0x0B72 GLenum
+@gl_const GL_DEPTH_CLEAR_VALUE 0x0B73 GLenum
+@gl_const GL_DEPTH_FUNC 0x0B74 GLenum
+@gl_const GL_STENCIL_TEST 0x0B90 GLenum
+@gl_const GL_STENCIL_CLEAR_VALUE 0x0B91 GLenum
+@gl_const GL_STENCIL_FUNC 0x0B92 GLenum
+@gl_const GL_STENCIL_VALUE_MASK 0x0B93 GLenum
+@gl_const GL_STENCIL_FAIL 0x0B94 GLenum
+@gl_const GL_STENCIL_PASS_DEPTH_FAIL 0x0B95 GLenum
+@gl_const GL_STENCIL_PASS_DEPTH_PASS 0x0B96 GLenum
+@gl_const GL_STENCIL_REF 0x0B97 GLenum
+@gl_const GL_STENCIL_WRITEMASK 0x0B98 GLenum
+@gl_const GL_VIEWPORT 0x0BA2 GLenum
+@gl_const GL_DITHER 0x0BD0 GLenum
+@gl_const GL_BLEND_DST 0x0BE0 GLenum
+@gl_const GL_BLEND_SRC 0x0BE1 GLenum
+@gl_const GL_BLEND 0x0BE2 GLenum
+@gl_const GL_LOGIC_OP_MODE 0x0BF0 GLenum
+@gl_const GL_COLOR_LOGIC_OP 0x0BF2 GLenum
+@gl_const GL_DRAW_BUFFER 0x0C01 GLenum
+@gl_const GL_READ_BUFFER 0x0C02 GLenum
+@gl_const GL_SCISSOR_BOX 0x0C10 GLenum
+@gl_const GL_SCISSOR_TEST 0x0C11 GLenum
+@gl_const GL_COLOR_CLEAR_VALUE 0x0C22 GLenum
+@gl_const GL_COLOR_WRITEMASK 0x0C23 GLenum
+@gl_const GL_DOUBLEBUFFER 0x0C32 GLenum
+@gl_const GL_STEREO 0x0C33 GLenum
+@gl_const GL_LINE_SMOOTH_HINT 0x0C52 GLenum
+@gl_const GL_POLYGON_SMOOTH_HINT 0x0C53 GLenum
+@gl_const GL_UNPACK_SWAP_BYTES 0x0CF0 GLenum
+@gl_const GL_UNPACK_LSB_FIRST 0x0CF1 GLenum
+@gl_const GL_UNPACK_ROW_LENGTH 0x0CF2 GLenum
+@gl_const GL_UNPACK_SKIP_ROWS 0x0CF3 GLenum
+@gl_const GL_UNPACK_SKIP_PIXELS 0x0CF4 GLenum
+@gl_const GL_UNPACK_ALIGNMENT 0x0CF5 GLenum
+@gl_const GL_PACK_SWAP_BYTES 0x0D00 GLenum
+@gl_const GL_PACK_LSB_FIRST 0x0D01 GLenum
+@gl_const GL_PACK_ROW_LENGTH 0x0D02 GLenum
+@gl_const GL_PACK_SKIP_ROWS 0x0D03 GLenum
+@gl_const GL_PACK_SKIP_PIXELS 0x0D04 GLenum
+@gl_const GL_PACK_ALIGNMENT 0x0D05 GLenum
+@gl_const GL_MAX_CLIP_DISTANCES 0x0D32 GLenum
+@gl_const GL_MAX_TEXTURE_SIZE 0x0D33 GLenum
+@gl_const GL_MAX_VIEWPORT_DIMS 0x0D3A GLenum
+@gl_const GL_SUBPIXEL_BITS 0x0D50 GLenum
+@gl_const GL_TEXTURE_1D 0x0DE0 GLenum
+@gl_const GL_TEXTURE_2D 0x0DE1 GLenum
+@gl_const GL_TEXTURE_WIDTH 0x1000 GLenum
+@gl_const GL_TEXTURE_HEIGHT 0x1001 GLenum
+@gl_const GL_TEXTURE_INTERNAL_FORMAT 0x1003 GLenum
+@gl_const GL_TEXTURE_BORDER_COLOR 0x1004 GLenum
+@gl_const GL_TEXTURE_TARGET 0x1006 GLenum
+@gl_const GL_DONT_CARE 0x1100 GLenum
+@gl_const GL_FASTEST 0x1101 GLenum
+@gl_const GL_NICEST 0x1102 GLenum
+@gl_const GL_BYTE 0x1400 GLenum
+@gl_const GL_UNSIGNED_BYTE 0x1401 GLenum
+@gl_const GL_SHORT 0x1402 GLenum
+@gl_const GL_UNSIGNED_SHORT 0x1403 GLenum
+@gl_const GL_INT 0x1404 GLenum
+@gl_const GL_UNSIGNED_INT 0x1405 GLenum
+@gl_const GL_FLOAT 0x1406 GLenum
+@gl_const GL_DOUBLE 0x140A GLenum
+@gl_const GL_HALF_FLOAT 0x140B GLenum
+@gl_const GL_FIXED 0x140C GLenum
+@gl_const GL_CLEAR 0x1500 GLenum
+@gl_const GL_AND 0x1501 GLenum
+@gl_const GL_AND_REVERSE 0x1502 GLenum
+@gl_const GL_COPY 0x1503 GLenum
+@gl_const GL_AND_INVERTED 0x1504 GLenum
+@gl_const GL_NOOP 0x1505 GLenum
+@gl_const GL_XOR 0x1506 GLenum
+@gl_const GL_OR 0x1507 GLenum
+@gl_const GL_NOR 0x1508 GLenum
+@gl_const GL_EQUIV 0x1509 GLenum
+@gl_const GL_INVERT 0x150A GLenum
+@gl_const GL_OR_REVERSE 0x150B GLenum
+@gl_const GL_COPY_INVERTED 0x150C GLenum
+@gl_const GL_OR_INVERTED 0x150D GLenum
+@gl_const GL_NAND 0x150E GLenum
+@gl_const GL_SET 0x150F GLenum
+@gl_const GL_TEXTURE 0x1702 GLenum
+@gl_const GL_COLOR 0x1800 GLenum
+@gl_const GL_DEPTH 0x1801 GLenum
+@gl_const GL_STENCIL 0x1802 GLenum
+@gl_const GL_STENCIL_INDEX 0x1901 GLenum
+@gl_const GL_DEPTH_COMPONENT 0x1902 GLenum
+@gl_const GL_RED 0x1903 GLenum
+@gl_const GL_GREEN 0x1904 GLenum
+@gl_const GL_BLUE 0x1905 GLenum
+@gl_const GL_ALPHA 0x1906 GLenum
+@gl_const GL_RGB 0x1907 GLenum
+@gl_const GL_RGBA 0x1908 GLenum
+@gl_const GL_POINT 0x1B00 GLenum
+@gl_const GL_LINE 0x1B01 GLenum
+@gl_const GL_FILL 0x1B02 GLenum
+@gl_const GL_KEEP 0x1E00 GLenum
+@gl_const GL_REPLACE 0x1E01 GLenum
+@gl_const GL_INCR 0x1E02 GLenum
+@gl_const GL_DECR 0x1E03 GLenum
+@gl_const GL_VENDOR 0x1F00 GLenum
+@gl_const GL_RENDERER 0x1F01 GLenum
+@gl_const GL_VERSION 0x1F02 GLenum
+@gl_const GL_EXTENSIONS 0x1F03 GLenum
+@gl_const GL_NEAREST 0x2600 GLenum
+@gl_const GL_LINEAR 0x2601 GLenum
+@gl_const GL_NEAREST_MIPMAP_NEAREST 0x2700 GLenum
+@gl_const GL_LINEAR_MIPMAP_NEAREST 0x2701 GLenum
+@gl_const GL_NEAREST_MIPMAP_LINEAR 0x2702 GLenum
+@gl_const GL_LINEAR_MIPMAP_LINEAR 0x2703 GLenum
+@gl_const GL_TEXTURE_MAG_FILTER 0x2800 GLenum
+@gl_const GL_TEXTURE_MIN_FILTER 0x2801 GLenum
+@gl_const GL_TEXTURE_WRAP_S 0x2802 GLenum
+@gl_const GL_TEXTURE_WRAP_T 0x2803 GLenum
+@gl_const GL_REPEAT 0x2901 GLenum
+@gl_const GL_POLYGON_OFFSET_UNITS 0x2A00 GLenum
+@gl_const GL_POLYGON_OFFSET_POINT 0x2A01 GLenum
+@gl_const GL_POLYGON_OFFSET_LINE 0x2A02 GLenum
+@gl_const GL_R3_G3_B2 0x2A10 GLenum
+@gl_const GL_CLIP_DISTANCE0 0x3000 GLenum
+@gl_const GL_CLIP_DISTANCE1 0x3001 GLenum
+@gl_const GL_CLIP_DISTANCE2 0x3002 GLenum
+@gl_const GL_CLIP_DISTANCE3 0x3003 GLenum
+@gl_const GL_CLIP_DISTANCE4 0x3004 GLenum
+@gl_const GL_CLIP_DISTANCE5 0x3005 GLenum
+@gl_const GL_CLIP_DISTANCE6 0x3006 GLenum
+@gl_const GL_CLIP_DISTANCE7 0x3007 GLenum
+@gl_const GL_CONSTANT_COLOR 0x8001 GLenum
+@gl_const GL_ONE_MINUS_CONSTANT_COLOR 0x8002 GLenum
+@gl_const GL_CONSTANT_ALPHA 0x8003 GLenum
+@gl_const GL_ONE_MINUS_CONSTANT_ALPHA 0x8004 GLenum
+@gl_const GL_FUNC_ADD 0x8006 GLenum
+@gl_const GL_MIN 0x8007 GLenum
+@gl_const GL_MAX 0x8008 GLenum
+@gl_const GL_BLEND_EQUATION_RGB 0x8009 GLenum
+@gl_const GL_FUNC_SUBTRACT 0x800A GLenum
+@gl_const GL_FUNC_REVERSE_SUBTRACT 0x800B GLenum
+@gl_const GL_UNSIGNED_BYTE_3_3_2 0x8032 GLenum
+@gl_const GL_UNSIGNED_SHORT_4_4_4_4 0x8033 GLenum
+@gl_const GL_UNSIGNED_SHORT_5_5_5_1 0x8034 GLenum
+@gl_const GL_UNSIGNED_INT_8_8_8_8 0x8035 GLenum
+@gl_const GL_UNSIGNED_INT_10_10_10_2 0x8036 GLenum
+@gl_const GL_POLYGON_OFFSET_FILL 0x8037 GLenum
+@gl_const GL_POLYGON_OFFSET_FACTOR 0x8038 GLenum
+@gl_const GL_RGB4 0x804F GLenum
+@gl_const GL_RGB5 0x8050 GLenum
+@gl_const GL_RGB8 0x8051 GLenum
+@gl_const GL_RGB10 0x8052 GLenum
+@gl_const GL_RGB12 0x8053 GLenum
+@gl_const GL_RGB16 0x8054 GLenum
+@gl_const GL_RGBA2 0x8055 GLenum
+@gl_const GL_RGBA4 0x8056 GLenum
+@gl_const GL_RGB5_A1 0x8057 GLenum
+@gl_const GL_RGBA8 0x8058 GLenum
+@gl_const GL_RGB10_A2 0x8059 GLenum
+@gl_const GL_RGBA12 0x805A GLenum
+@gl_const GL_RGBA16 0x805B GLenum
+@gl_const GL_TEXTURE_RED_SIZE 0x805C GLenum
+@gl_const GL_TEXTURE_GREEN_SIZE 0x805D GLenum
+@gl_const GL_TEXTURE_BLUE_SIZE 0x805E GLenum
+@gl_const GL_TEXTURE_ALPHA_SIZE 0x805F GLenum
+@gl_const GL_PROXY_TEXTURE_1D 0x8063 GLenum
+@gl_const GL_PROXY_TEXTURE_2D 0x8064 GLenum
+@gl_const GL_TEXTURE_BINDING_1D 0x8068 GLenum
+@gl_const GL_TEXTURE_BINDING_2D 0x8069 GLenum
+@gl_const GL_TEXTURE_BINDING_3D 0x806A GLenum
+@gl_const GL_PACK_SKIP_IMAGES 0x806B GLenum
+@gl_const GL_PACK_IMAGE_HEIGHT 0x806C GLenum
+@gl_const GL_UNPACK_SKIP_IMAGES 0x806D GLenum
+@gl_const GL_UNPACK_IMAGE_HEIGHT 0x806E GLenum
+@gl_const GL_TEXTURE_3D 0x806F GLenum
+@gl_const GL_PROXY_TEXTURE_3D 0x8070 GLenum
+@gl_const GL_TEXTURE_DEPTH 0x8071 GLenum
+@gl_const GL_TEXTURE_WRAP_R 0x8072 GLenum
+@gl_const GL_MAX_3D_TEXTURE_SIZE 0x8073 GLenum
+@gl_const GL_VERTEX_ARRAY 0x8074 GLenum
+@gl_const GL_MULTISAMPLE 0x809D GLenum
+@gl_const GL_SAMPLE_ALPHA_TO_COVERAGE 0x809E GLenum
+@gl_const GL_SAMPLE_ALPHA_TO_ONE 0x809F GLenum
+@gl_const GL_SAMPLE_COVERAGE 0x80A0 GLenum
+@gl_const GL_SAMPLE_BUFFERS 0x80A8 GLenum
+@gl_const GL_SAMPLES 0x80A9 GLenum
+@gl_const GL_SAMPLE_COVERAGE_VALUE 0x80AA GLenum
+@gl_const GL_SAMPLE_COVERAGE_INVERT 0x80AB GLenum
+@gl_const GL_BLEND_DST_RGB 0x80C8 GLenum
+@gl_const GL_BLEND_SRC_RGB 0x80C9 GLenum
+@gl_const GL_BLEND_DST_ALPHA 0x80CA GLenum
+@gl_const GL_BLEND_SRC_ALPHA 0x80CB GLenum
+@gl_const GL_BGR 0x80E0 GLenum
+@gl_const GL_BGRA 0x80E1 GLenum
+@gl_const GL_MAX_ELEMENTS_VERTICES 0x80E8 GLenum
+@gl_const GL_MAX_ELEMENTS_INDICES 0x80E9 GLenum
+@gl_const GL_POINT_FADE_THRESHOLD_SIZE 0x8128 GLenum
+@gl_const GL_CLAMP_TO_BORDER 0x812D GLenum
+@gl_const GL_CLAMP_TO_EDGE 0x812F GLenum
+@gl_const GL_TEXTURE_MIN_LOD 0x813A GLenum
+@gl_const GL_TEXTURE_MAX_LOD 0x813B GLenum
+@gl_const GL_TEXTURE_BASE_LEVEL 0x813C GLenum
+@gl_const GL_TEXTURE_MAX_LEVEL 0x813D GLenum
+@gl_const GL_DEPTH_COMPONENT16 0x81A5 GLenum
+@gl_const GL_DEPTH_COMPONENT24 0x81A6 GLenum
+@gl_const GL_DEPTH_COMPONENT32 0x81A7 GLenum
+@gl_const GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING 0x8210 GLenum
+@gl_const GL_FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE 0x8211 GLenum
+@gl_const GL_FRAMEBUFFER_ATTACHMENT_RED_SIZE 0x8212 GLenum
+@gl_const GL_FRAMEBUFFER_ATTACHMENT_GREEN_SIZE 0x8213 GLenum
+@gl_const GL_FRAMEBUFFER_ATTACHMENT_BLUE_SIZE 0x8214 GLenum
+@gl_const GL_FRAMEBUFFER_ATTACHMENT_ALPHA_SIZE 0x8215 GLenum
+@gl_const GL_FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE 0x8216 GLenum
+@gl_const GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE 0x8217 GLenum
+@gl_const GL_FRAMEBUFFER_DEFAULT 0x8218 GLenum
+@gl_const GL_FRAMEBUFFER_UNDEFINED 0x8219 GLenum
+@gl_const GL_DEPTH_STENCIL_ATTACHMENT 0x821A GLenum
+@gl_const GL_MAJOR_VERSION 0x821B GLenum
+@gl_const GL_MINOR_VERSION 0x821C GLenum
+@gl_const GL_NUM_EXTENSIONS 0x821D GLenum
+@gl_const GL_CONTEXT_FLAGS 0x821E GLenum
+@gl_const GL_BUFFER_IMMUTABLE_STORAGE 0x821F GLenum
+@gl_const GL_BUFFER_STORAGE_FLAGS 0x8220 GLenum
+@gl_const GL_PRIMITIVE_RESTART_FOR_PATCHES_SUPPORTED 0x8221 GLenum
+@gl_const GL_INDEX 0x8222 GLenum
+@gl_const GL_COMPRESSED_RED 0x8225 GLenum
+@gl_const GL_COMPRESSED_RG 0x8226 GLenum
+@gl_const GL_RG 0x8227 GLenum
+@gl_const GL_RG_INTEGER 0x8228 GLenum
+@gl_const GL_R8 0x8229 GLenum
+@gl_const GL_R16 0x822A GLenum
+@gl_const GL_RG8 0x822B GLenum
+@gl_const GL_RG16 0x822C GLenum
+@gl_const GL_R16F 0x822D GLenum
+@gl_const GL_R32F 0x822E GLenum
+@gl_const GL_RG16F 0x822F GLenum
+@gl_const GL_RG32F 0x8230 GLenum
+@gl_const GL_R8I 0x8231 GLenum
+@gl_const GL_R8UI 0x8232 GLenum
+@gl_const GL_R16I 0x8233 GLenum
+@gl_const GL_R16UI 0x8234 GLenum
+@gl_const GL_R32I 0x8235 GLenum
+@gl_const GL_R32UI 0x8236 GLenum
+@gl_const GL_RG8I 0x8237 GLenum
+@gl_const GL_RG8UI 0x8238 GLenum
+@gl_const GL_RG16I 0x8239 GLenum
+@gl_const GL_RG16UI 0x823A GLenum
+@gl_const GL_RG32I 0x823B GLenum
+@gl_const GL_RG32UI 0x823C GLenum
+@gl_const GL_DEBUG_OUTPUT_SYNCHRONOUS 0x8242 GLenum
+@gl_const GL_DEBUG_NEXT_LOGGED_MESSAGE_LENGTH 0x8243 GLenum
+@gl_const GL_DEBUG_CALLBACK_FUNCTION 0x8244 GLenum
+@gl_const GL_DEBUG_CALLBACK_USER_PARAM 0x8245 GLenum
+@gl_const GL_DEBUG_SOURCE_API 0x8246 GLenum
+@gl_const GL_DEBUG_SOURCE_WINDOW_SYSTEM 0x8247 GLenum
+@gl_const GL_DEBUG_SOURCE_SHADER_COMPILER 0x8248 GLenum
+@gl_const GL_DEBUG_SOURCE_THIRD_PARTY 0x8249 GLenum
+@gl_const GL_DEBUG_SOURCE_APPLICATION 0x824A GLenum
+@gl_const GL_DEBUG_SOURCE_OTHER 0x824B GLenum
+@gl_const GL_DEBUG_TYPE_ERROR 0x824C GLenum
+@gl_const GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR 0x824D GLenum
+@gl_const GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR 0x824E GLenum
+@gl_const GL_DEBUG_TYPE_PORTABILITY 0x824F GLenum
+@gl_const GL_DEBUG_TYPE_PERFORMANCE 0x8250 GLenum
+@gl_const GL_DEBUG_TYPE_OTHER 0x8251 GLenum
+@gl_const GL_LOSE_CONTEXT_ON_RESET 0x8252 GLenum
+@gl_const GL_GUILTY_CONTEXT_RESET 0x8253 GLenum
+@gl_const GL_INNOCENT_CONTEXT_RESET 0x8254 GLenum
+@gl_const GL_UNKNOWN_CONTEXT_RESET 0x8255 GLenum
+@gl_const GL_RESET_NOTIFICATION_STRATEGY 0x8256 GLenum
+@gl_const GL_PROGRAM_BINARY_RETRIEVABLE_HINT 0x8257 GLenum
+@gl_const GL_PROGRAM_SEPARABLE 0x8258 GLenum
+@gl_const GL_ACTIVE_PROGRAM 0x8259 GLenum
+@gl_const GL_PROGRAM_PIPELINE_BINDING 0x825A GLenum
+@gl_const GL_MAX_VIEWPORTS 0x825B GLenum
+@gl_const GL_VIEWPORT_SUBPIXEL_BITS 0x825C GLenum
+@gl_const GL_VIEWPORT_BOUNDS_RANGE 0x825D GLenum
+@gl_const GL_LAYER_PROVOKING_VERTEX 0x825E GLenum
+@gl_const GL_VIEWPORT_INDEX_PROVOKING_VERTEX 0x825F GLenum
+@gl_const GL_UNDEFINED_VERTEX 0x8260 GLenum
+@gl_const GL_NO_RESET_NOTIFICATION 0x8261 GLenum
+@gl_const GL_MAX_COMPUTE_SHARED_MEMORY_SIZE 0x8262 GLenum
+@gl_const GL_MAX_COMPUTE_UNIFORM_COMPONENTS 0x8263 GLenum
+@gl_const GL_MAX_COMPUTE_ATOMIC_COUNTER_BUFFERS 0x8264 GLenum
+@gl_const GL_MAX_COMPUTE_ATOMIC_COUNTERS 0x8265 GLenum
+@gl_const GL_MAX_COMBINED_COMPUTE_UNIFORM_COMPONENTS 0x8266 GLenum
+@gl_const GL_COMPUTE_WORK_GROUP_SIZE 0x8267 GLenum
+@gl_const GL_DEBUG_TYPE_MARKER 0x8268 GLenum
+@gl_const GL_DEBUG_TYPE_PUSH_GROUP 0x8269 GLenum
+@gl_const GL_DEBUG_TYPE_POP_GROUP 0x826A GLenum
+@gl_const GL_DEBUG_SEVERITY_NOTIFICATION 0x826B GLenum
+@gl_const GL_MAX_DEBUG_GROUP_STACK_DEPTH 0x826C GLenum
+@gl_const GL_DEBUG_GROUP_STACK_DEPTH 0x826D GLenum
+@gl_const GL_MAX_UNIFORM_LOCATIONS 0x826E GLenum
+@gl_const GL_INTERNALFORMAT_SUPPORTED 0x826F GLenum
+@gl_const GL_INTERNALFORMAT_PREFERRED 0x8270 GLenum
+@gl_const GL_INTERNALFORMAT_RED_SIZE 0x8271 GLenum
+@gl_const GL_INTERNALFORMAT_GREEN_SIZE 0x8272 GLenum
+@gl_const GL_INTERNALFORMAT_BLUE_SIZE 0x8273 GLenum
+@gl_const GL_INTERNALFORMAT_ALPHA_SIZE 0x8274 GLenum
+@gl_const GL_INTERNALFORMAT_DEPTH_SIZE 0x8275 GLenum
+@gl_const GL_INTERNALFORMAT_STENCIL_SIZE 0x8276 GLenum
+@gl_const GL_INTERNALFORMAT_SHARED_SIZE 0x8277 GLenum
+@gl_const GL_INTERNALFORMAT_RED_TYPE 0x8278 GLenum
+@gl_const GL_INTERNALFORMAT_GREEN_TYPE 0x8279 GLenum
+@gl_const GL_INTERNALFORMAT_BLUE_TYPE 0x827A GLenum
+@gl_const GL_INTERNALFORMAT_ALPHA_TYPE 0x827B GLenum
+@gl_const GL_INTERNALFORMAT_DEPTH_TYPE 0x827C GLenum
+@gl_const GL_INTERNALFORMAT_STENCIL_TYPE 0x827D GLenum
+@gl_const GL_MAX_WIDTH 0x827E GLenum
+@gl_const GL_MAX_HEIGHT 0x827F GLenum
+@gl_const GL_MAX_DEPTH 0x8280 GLenum
+@gl_const GL_MAX_LAYERS 0x8281 GLenum
+@gl_const GL_MAX_COMBINED_DIMENSIONS 0x8282 GLenum
+@gl_const GL_COLOR_COMPONENTS 0x8283 GLenum
+@gl_const GL_DEPTH_COMPONENTS 0x8284 GLenum
+@gl_const GL_STENCIL_COMPONENTS 0x8285 GLenum
+@gl_const GL_COLOR_RENDERABLE 0x8286 GLenum
+@gl_const GL_DEPTH_RENDERABLE 0x8287 GLenum
+@gl_const GL_STENCIL_RENDERABLE 0x8288 GLenum
+@gl_const GL_FRAMEBUFFER_RENDERABLE 0x8289 GLenum
+@gl_const GL_FRAMEBUFFER_RENDERABLE_LAYERED 0x828A GLenum
+@gl_const GL_FRAMEBUFFER_BLEND 0x828B GLenum
+@gl_const GL_READ_PIXELS 0x828C GLenum
+@gl_const GL_READ_PIXELS_FORMAT 0x828D GLenum
+@gl_const GL_READ_PIXELS_TYPE 0x828E GLenum
+@gl_const GL_TEXTURE_IMAGE_FORMAT 0x828F GLenum
+@gl_const GL_TEXTURE_IMAGE_TYPE 0x8290 GLenum
+@gl_const GL_GET_TEXTURE_IMAGE_FORMAT 0x8291 GLenum
+@gl_const GL_GET_TEXTURE_IMAGE_TYPE 0x8292 GLenum
+@gl_const GL_MIPMAP 0x8293 GLenum
+@gl_const GL_MANUAL_GENERATE_MIPMAP 0x8294 GLenum
+@gl_const GL_AUTO_GENERATE_MIPMAP 0x8295 GLenum
+@gl_const GL_COLOR_ENCODING 0x8296 GLenum
+@gl_const GL_SRGB_READ 0x8297 GLenum
+@gl_const GL_SRGB_WRITE 0x8298 GLenum
+@gl_const GL_FILTER 0x829A GLenum
+@gl_const GL_VERTEX_TEXTURE 0x829B GLenum
+@gl_const GL_TESS_CONTROL_TEXTURE 0x829C GLenum
+@gl_const GL_TESS_EVALUATION_TEXTURE 0x829D GLenum
+@gl_const GL_GEOMETRY_TEXTURE 0x829E GLenum
+@gl_const GL_FRAGMENT_TEXTURE 0x829F GLenum
+@gl_const GL_COMPUTE_TEXTURE 0x82A0 GLenum
+@gl_const GL_TEXTURE_SHADOW 0x82A1 GLenum
+@gl_const GL_TEXTURE_GATHER 0x82A2 GLenum
+@gl_const GL_TEXTURE_GATHER_SHADOW 0x82A3 GLenum
+@gl_const GL_SHADER_IMAGE_LOAD 0x82A4 GLenum
+@gl_const GL_SHADER_IMAGE_STORE 0x82A5 GLenum
+@gl_const GL_SHADER_IMAGE_ATOMIC 0x82A6 GLenum
+@gl_const GL_IMAGE_TEXEL_SIZE 0x82A7 GLenum
+@gl_const GL_IMAGE_COMPATIBILITY_CLASS 0x82A8 GLenum
+@gl_const GL_IMAGE_PIXEL_FORMAT 0x82A9 GLenum
+@gl_const GL_IMAGE_PIXEL_TYPE 0x82AA GLenum
+@gl_const GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_TEST 0x82AC GLenum
+@gl_const GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_TEST 0x82AD GLenum
+@gl_const GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_WRITE 0x82AE GLenum
+@gl_const GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_WRITE 0x82AF GLenum
+@gl_const GL_TEXTURE_COMPRESSED_BLOCK_WIDTH 0x82B1 GLenum
+@gl_const GL_TEXTURE_COMPRESSED_BLOCK_HEIGHT 0x82B2 GLenum
+@gl_const GL_TEXTURE_COMPRESSED_BLOCK_SIZE 0x82B3 GLenum
+@gl_const GL_CLEAR_BUFFER 0x82B4 GLenum
+@gl_const GL_TEXTURE_VIEW 0x82B5 GLenum
+@gl_const GL_VIEW_COMPATIBILITY_CLASS 0x82B6 GLenum
+@gl_const GL_FULL_SUPPORT 0x82B7 GLenum
+@gl_const GL_CAVEAT_SUPPORT 0x82B8 GLenum
+@gl_const GL_IMAGE_CLASS_4_X_32 0x82B9 GLenum
+@gl_const GL_IMAGE_CLASS_2_X_32 0x82BA GLenum
+@gl_const GL_IMAGE_CLASS_1_X_32 0x82BB GLenum
+@gl_const GL_IMAGE_CLASS_4_X_16 0x82BC GLenum
+@gl_const GL_IMAGE_CLASS_2_X_16 0x82BD GLenum
+@gl_const GL_IMAGE_CLASS_1_X_16 0x82BE GLenum
+@gl_const GL_IMAGE_CLASS_4_X_8 0x82BF GLenum
+@gl_const GL_IMAGE_CLASS_2_X_8 0x82C0 GLenum
+@gl_const GL_IMAGE_CLASS_1_X_8 0x82C1 GLenum
+@gl_const GL_IMAGE_CLASS_11_11_10 0x82C2 GLenum
+@gl_const GL_IMAGE_CLASS_10_10_10_2 0x82C3 GLenum
+@gl_const GL_VIEW_CLASS_128_BITS 0x82C4 GLenum
+@gl_const GL_VIEW_CLASS_96_BITS 0x82C5 GLenum
+@gl_const GL_VIEW_CLASS_64_BITS 0x82C6 GLenum
+@gl_const GL_VIEW_CLASS_48_BITS 0x82C7 GLenum
+@gl_const GL_VIEW_CLASS_32_BITS 0x82C8 GLenum
+@gl_const GL_VIEW_CLASS_24_BITS 0x82C9 GLenum
+@gl_const GL_VIEW_CLASS_16_BITS 0x82CA GLenum
+@gl_const GL_VIEW_CLASS_8_BITS 0x82CB GLenum
+@gl_const GL_VIEW_CLASS_S3TC_DXT1_RGB 0x82CC GLenum
+@gl_const GL_VIEW_CLASS_S3TC_DXT1_RGBA 0x82CD GLenum
+@gl_const GL_VIEW_CLASS_S3TC_DXT3_RGBA 0x82CE GLenum
+@gl_const GL_VIEW_CLASS_S3TC_DXT5_RGBA 0x82CF GLenum
+@gl_const GL_VIEW_CLASS_RGTC1_RED 0x82D0 GLenum
+@gl_const GL_VIEW_CLASS_RGTC2_RG 0x82D1 GLenum
+@gl_const GL_VIEW_CLASS_BPTC_UNORM 0x82D2 GLenum
+@gl_const GL_VIEW_CLASS_BPTC_FLOAT 0x82D3 GLenum
+@gl_const GL_VERTEX_ATTRIB_BINDING 0x82D4 GLenum
+@gl_const GL_VERTEX_ATTRIB_RELATIVE_OFFSET 0x82D5 GLenum
+@gl_const GL_VERTEX_BINDING_DIVISOR 0x82D6 GLenum
+@gl_const GL_VERTEX_BINDING_OFFSET 0x82D7 GLenum
+@gl_const GL_VERTEX_BINDING_STRIDE 0x82D8 GLenum
+@gl_const GL_MAX_VERTEX_ATTRIB_RELATIVE_OFFSET 0x82D9 GLenum
+@gl_const GL_MAX_VERTEX_ATTRIB_BINDINGS 0x82DA GLenum
+@gl_const GL_TEXTURE_VIEW_MIN_LEVEL 0x82DB GLenum
+@gl_const GL_TEXTURE_VIEW_NUM_LEVELS 0x82DC GLenum
+@gl_const GL_TEXTURE_VIEW_MIN_LAYER 0x82DD GLenum
+@gl_const GL_TEXTURE_VIEW_NUM_LAYERS 0x82DE GLenum
+@gl_const GL_TEXTURE_IMMUTABLE_LEVELS 0x82DF GLenum
+@gl_const GL_BUFFER 0x82E0 GLenum
+@gl_const GL_SHADER 0x82E1 GLenum
+@gl_const GL_PROGRAM 0x82E2 GLenum
+@gl_const GL_QUERY 0x82E3 GLenum
+@gl_const GL_PROGRAM_PIPELINE 0x82E4 GLenum
+@gl_const GL_MAX_VERTEX_ATTRIB_STRIDE 0x82E5 GLenum
+@gl_const GL_SAMPLER 0x82E6 GLenum
+@gl_const GL_DISPLAY_LIST 0x82E7 GLenum
+@gl_const GL_MAX_LABEL_LENGTH 0x82E8 GLenum
+@gl_const GL_NUM_SHADING_LANGUAGE_VERSIONS 0x82E9 GLenum
+@gl_const GL_QUERY_TARGET 0x82EA GLenum
+@gl_const GL_MAX_CULL_DISTANCES 0x82F9 GLenum
+@gl_const GL_MAX_COMBINED_CLIP_AND_CULL_DISTANCES 0x82FA GLenum
+@gl_const GL_CONTEXT_RELEASE_BEHAVIOR 0x82FB GLenum
+@gl_const GL_CONTEXT_RELEASE_BEHAVIOR_FLUSH 0x82FC GLenum
+@gl_const GL_UNSIGNED_BYTE_2_3_3_REV 0x8362 GLenum
+@gl_const GL_UNSIGNED_SHORT_5_6_5 0x8363 GLenum
+@gl_const GL_UNSIGNED_SHORT_5_6_5_REV 0x8364 GLenum
+@gl_const GL_UNSIGNED_SHORT_4_4_4_4_REV 0x8365 GLenum
+@gl_const GL_UNSIGNED_SHORT_1_5_5_5_REV 0x8366 GLenum
+@gl_const GL_UNSIGNED_INT_8_8_8_8_REV 0x8367 GLenum
+@gl_const GL_UNSIGNED_INT_2_10_10_10_REV 0x8368 GLenum
+@gl_const GL_MIRRORED_REPEAT 0x8370 GLenum
+@gl_const GL_ALIASED_LINE_WIDTH_RANGE 0x846E GLenum
+@gl_const GL_TEXTURE0 0x84C0 GLenum
+@gl_const GL_TEXTURE1 0x84C1 GLenum
+@gl_const GL_TEXTURE2 0x84C2 GLenum
+@gl_const GL_TEXTURE3 0x84C3 GLenum
+@gl_const GL_TEXTURE4 0x84C4 GLenum
+@gl_const GL_TEXTURE5 0x84C5 GLenum
+@gl_const GL_TEXTURE6 0x84C6 GLenum
+@gl_const GL_TEXTURE7 0x84C7 GLenum
+@gl_const GL_TEXTURE8 0x84C8 GLenum
+@gl_const GL_TEXTURE9 0x84C9 GLenum
+@gl_const GL_TEXTURE10 0x84CA GLenum
+@gl_const GL_TEXTURE11 0x84CB GLenum
+@gl_const GL_TEXTURE12 0x84CC GLenum
+@gl_const GL_TEXTURE13 0x84CD GLenum
+@gl_const GL_TEXTURE14 0x84CE GLenum
+@gl_const GL_TEXTURE15 0x84CF GLenum
+@gl_const GL_TEXTURE16 0x84D0 GLenum
+@gl_const GL_TEXTURE17 0x84D1 GLenum
+@gl_const GL_TEXTURE18 0x84D2 GLenum
+@gl_const GL_TEXTURE19 0x84D3 GLenum
+@gl_const GL_TEXTURE20 0x84D4 GLenum
+@gl_const GL_TEXTURE21 0x84D5 GLenum
+@gl_const GL_TEXTURE22 0x84D6 GLenum
+@gl_const GL_TEXTURE23 0x84D7 GLenum
+@gl_const GL_TEXTURE24 0x84D8 GLenum
+@gl_const GL_TEXTURE25 0x84D9 GLenum
+@gl_const GL_TEXTURE26 0x84DA GLenum
+@gl_const GL_TEXTURE27 0x84DB GLenum
+@gl_const GL_TEXTURE28 0x84DC GLenum
+@gl_const GL_TEXTURE29 0x84DD GLenum
+@gl_const GL_TEXTURE30 0x84DE GLenum
+@gl_const GL_TEXTURE31 0x84DF GLenum
+@gl_const GL_ACTIVE_TEXTURE 0x84E0 GLenum
+@gl_const GL_MAX_RENDERBUFFER_SIZE 0x84E8 GLenum
+@gl_const GL_COMPRESSED_RGB 0x84ED GLenum
+@gl_const GL_COMPRESSED_RGBA 0x84EE GLenum
+@gl_const GL_TEXTURE_COMPRESSION_HINT 0x84EF GLenum
+@gl_const GL_UNIFORM_BLOCK_REFERENCED_BY_TESS_CONTROL_SHADER 0x84F0 GLenum
+@gl_const GL_UNIFORM_BLOCK_REFERENCED_BY_TESS_EVALUATION_SHADER 0x84F1 GLenum
+@gl_const GL_TEXTURE_RECTANGLE 0x84F5 GLenum
+@gl_const GL_TEXTURE_BINDING_RECTANGLE 0x84F6 GLenum
+@gl_const GL_PROXY_TEXTURE_RECTANGLE 0x84F7 GLenum
+@gl_const GL_MAX_RECTANGLE_TEXTURE_SIZE 0x84F8 GLenum
+@gl_const GL_DEPTH_STENCIL 0x84F9 GLenum
+@gl_const GL_UNSIGNED_INT_24_8 0x84FA GLenum
+@gl_const GL_MAX_TEXTURE_LOD_BIAS 0x84FD GLenum
+@gl_const GL_TEXTURE_LOD_BIAS 0x8501 GLenum
+@gl_const GL_INCR_WRAP 0x8507 GLenum
+@gl_const GL_DECR_WRAP 0x8508 GLenum
+@gl_const GL_TEXTURE_CUBE_MAP 0x8513 GLenum
+@gl_const GL_TEXTURE_BINDING_CUBE_MAP 0x8514 GLenum
+@gl_const GL_TEXTURE_CUBE_MAP_POSITIVE_X 0x8515 GLenum
+@gl_const GL_TEXTURE_CUBE_MAP_NEGATIVE_X 0x8516 GLenum
+@gl_const GL_TEXTURE_CUBE_MAP_POSITIVE_Y 0x8517 GLenum
+@gl_const GL_TEXTURE_CUBE_MAP_NEGATIVE_Y 0x8518 GLenum
+@gl_const GL_TEXTURE_CUBE_MAP_POSITIVE_Z 0x8519 GLenum
+@gl_const GL_TEXTURE_CUBE_MAP_NEGATIVE_Z 0x851A GLenum
+@gl_const GL_PROXY_TEXTURE_CUBE_MAP 0x851B GLenum
+@gl_const GL_MAX_CUBE_MAP_TEXTURE_SIZE 0x851C GLenum
+@gl_const GL_SRC1_ALPHA 0x8589 GLenum
+@gl_const GL_VERTEX_ARRAY_BINDING 0x85B5 GLenum
+@gl_const GL_VERTEX_ATTRIB_ARRAY_ENABLED 0x8622 GLenum
+@gl_const GL_VERTEX_ATTRIB_ARRAY_SIZE 0x8623 GLenum
+@gl_const GL_VERTEX_ATTRIB_ARRAY_STRIDE 0x8624 GLenum
+@gl_const GL_VERTEX_ATTRIB_ARRAY_TYPE 0x8625 GLenum
+@gl_const GL_CURRENT_VERTEX_ATTRIB 0x8626 GLenum
+@gl_const GL_VERTEX_PROGRAM_POINT_SIZE 0x8642 GLenum
+@gl_const GL_PROGRAM_POINT_SIZE 0x8642 GLenum
+@gl_const GL_VERTEX_ATTRIB_ARRAY_POINTER 0x8645 GLenum
+@gl_const GL_DEPTH_CLAMP 0x864F GLenum
+@gl_const GL_TEXTURE_COMPRESSED_IMAGE_SIZE 0x86A0 GLenum
+@gl_const GL_TEXTURE_COMPRESSED 0x86A1 GLenum
+@gl_const GL_NUM_COMPRESSED_TEXTURE_FORMATS 0x86A2 GLenum
+@gl_const GL_COMPRESSED_TEXTURE_FORMATS 0x86A3 GLenum
+@gl_const GL_PROGRAM_BINARY_LENGTH 0x8741 GLenum
+@gl_const GL_MIRROR_CLAMP_TO_EDGE 0x8743 GLenum
+@gl_const GL_VERTEX_ATTRIB_ARRAY_LONG 0x874E GLenum
+@gl_const GL_BUFFER_SIZE 0x8764 GLenum
+@gl_const GL_BUFFER_USAGE 0x8765 GLenum
+@gl_const GL_NUM_PROGRAM_BINARY_FORMATS 0x87FE GLenum
+@gl_const GL_PROGRAM_BINARY_FORMATS 0x87FF GLenum
+@gl_const GL_STENCIL_BACK_FUNC 0x8800 GLenum
+@gl_const GL_STENCIL_BACK_FAIL 0x8801 GLenum
+@gl_const GL_STENCIL_BACK_PASS_DEPTH_FAIL 0x8802 GLenum
+@gl_const GL_STENCIL_BACK_PASS_DEPTH_PASS 0x8803 GLenum
+@gl_const GL_RGBA32F 0x8814 GLenum
+@gl_const GL_RGB32F 0x8815 GLenum
+@gl_const GL_RGBA16F 0x881A GLenum
+@gl_const GL_RGB16F 0x881B GLenum
+@gl_const GL_MAX_DRAW_BUFFERS 0x8824 GLenum
+@gl_const GL_DRAW_BUFFER0 0x8825 GLenum
+@gl_const GL_DRAW_BUFFER1 0x8826 GLenum
+@gl_const GL_DRAW_BUFFER2 0x8827 GLenum
+@gl_const GL_DRAW_BUFFER3 0x8828 GLenum
+@gl_const GL_DRAW_BUFFER4 0x8829 GLenum
+@gl_const GL_DRAW_BUFFER5 0x882A GLenum
+@gl_const GL_DRAW_BUFFER6 0x882B GLenum
+@gl_const GL_DRAW_BUFFER7 0x882C GLenum
+@gl_const GL_DRAW_BUFFER8 0x882D GLenum
+@gl_const GL_DRAW_BUFFER9 0x882E GLenum
+@gl_const GL_DRAW_BUFFER10 0x882F GLenum
+@gl_const GL_DRAW_BUFFER11 0x8830 GLenum
+@gl_const GL_DRAW_BUFFER12 0x8831 GLenum
+@gl_const GL_DRAW_BUFFER13 0x8832 GLenum
+@gl_const GL_DRAW_BUFFER14 0x8833 GLenum
+@gl_const GL_DRAW_BUFFER15 0x8834 GLenum
+@gl_const GL_BLEND_EQUATION_ALPHA 0x883D GLenum
+@gl_const GL_TEXTURE_DEPTH_SIZE 0x884A GLenum
+@gl_const GL_TEXTURE_COMPARE_MODE 0x884C GLenum
+@gl_const GL_TEXTURE_COMPARE_FUNC 0x884D GLenum
+@gl_const GL_COMPARE_REF_TO_TEXTURE 0x884E GLenum
+@gl_const GL_TEXTURE_CUBE_MAP_SEAMLESS 0x884F GLenum
+@gl_const GL_QUERY_COUNTER_BITS 0x8864 GLenum
+@gl_const GL_CURRENT_QUERY 0x8865 GLenum
+@gl_const GL_QUERY_RESULT 0x8866 GLenum
+@gl_const GL_QUERY_RESULT_AVAILABLE 0x8867 GLenum
+@gl_const GL_MAX_VERTEX_ATTRIBS 0x8869 GLenum
+@gl_const GL_VERTEX_ATTRIB_ARRAY_NORMALIZED 0x886A GLenum
+@gl_const GL_MAX_TESS_CONTROL_INPUT_COMPONENTS 0x886C GLenum
+@gl_const GL_MAX_TESS_EVALUATION_INPUT_COMPONENTS 0x886D GLenum
+@gl_const GL_MAX_TEXTURE_IMAGE_UNITS 0x8872 GLenum
+@gl_const GL_GEOMETRY_SHADER_INVOCATIONS 0x887F GLenum
+@gl_const GL_ARRAY_BUFFER 0x8892 GLenum
+@gl_const GL_ELEMENT_ARRAY_BUFFER 0x8893 GLenum
+@gl_const GL_ARRAY_BUFFER_BINDING 0x8894 GLenum
+@gl_const GL_ELEMENT_ARRAY_BUFFER_BINDING 0x8895 GLenum
+@gl_const GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING 0x889F GLenum
+@gl_const GL_READ_ONLY 0x88B8 GLenum
+@gl_const GL_WRITE_ONLY 0x88B9 GLenum
+@gl_const GL_READ_WRITE 0x88BA GLenum
+@gl_const GL_BUFFER_ACCESS 0x88BB GLenum
+@gl_const GL_BUFFER_MAPPED 0x88BC GLenum
+@gl_const GL_BUFFER_MAP_POINTER 0x88BD GLenum
+@gl_const GL_TIME_ELAPSED 0x88BF GLenum
+@gl_const GL_STREAM_DRAW 0x88E0 GLenum
+@gl_const GL_STREAM_READ 0x88E1 GLenum
+@gl_const GL_STREAM_COPY 0x88E2 GLenum
+@gl_const GL_STATIC_DRAW 0x88E4 GLenum
+@gl_const GL_STATIC_READ 0x88E5 GLenum
+@gl_const GL_STATIC_COPY 0x88E6 GLenum
+@gl_const GL_DYNAMIC_DRAW 0x88E8 GLenum
+@gl_const GL_DYNAMIC_READ 0x88E9 GLenum
+@gl_const GL_DYNAMIC_COPY 0x88EA GLenum
+@gl_const GL_PIXEL_PACK_BUFFER 0x88EB GLenum
+@gl_const GL_PIXEL_UNPACK_BUFFER 0x88EC GLenum
+@gl_const GL_PIXEL_PACK_BUFFER_BINDING 0x88ED GLenum
+@gl_const GL_PIXEL_UNPACK_BUFFER_BINDING 0x88EF GLenum
+@gl_const GL_DEPTH24_STENCIL8 0x88F0 GLenum
+@gl_const GL_TEXTURE_STENCIL_SIZE 0x88F1 GLenum
+@gl_const GL_SRC1_COLOR 0x88F9 GLenum
+@gl_const GL_ONE_MINUS_SRC1_COLOR 0x88FA GLenum
+@gl_const GL_ONE_MINUS_SRC1_ALPHA 0x88FB GLenum
+@gl_const GL_MAX_DUAL_SOURCE_DRAW_BUFFERS 0x88FC GLenum
+@gl_const GL_VERTEX_ATTRIB_ARRAY_INTEGER 0x88FD GLenum
+@gl_const GL_VERTEX_ATTRIB_ARRAY_DIVISOR 0x88FE GLenum
+@gl_const GL_MAX_ARRAY_TEXTURE_LAYERS 0x88FF GLenum
+@gl_const GL_MIN_PROGRAM_TEXEL_OFFSET 0x8904 GLenum
+@gl_const GL_MAX_PROGRAM_TEXEL_OFFSET 0x8905 GLenum
+@gl_const GL_SAMPLES_PASSED 0x8914 GLenum
+@gl_const GL_GEOMETRY_VERTICES_OUT 0x8916 GLenum
+@gl_const GL_GEOMETRY_INPUT_TYPE 0x8917 GLenum
+@gl_const GL_GEOMETRY_OUTPUT_TYPE 0x8918 GLenum
+@gl_const GL_SAMPLER_BINDING 0x8919 GLenum
+@gl_const GL_CLAMP_READ_COLOR 0x891C GLenum
+@gl_const GL_FIXED_ONLY 0x891D GLenum
+@gl_const GL_UNIFORM_BUFFER 0x8A11 GLenum
+@gl_const GL_UNIFORM_BUFFER_BINDING 0x8A28 GLenum
+@gl_const GL_UNIFORM_BUFFER_START 0x8A29 GLenum
+@gl_const GL_UNIFORM_BUFFER_SIZE 0x8A2A GLenum
+@gl_const GL_MAX_VERTEX_UNIFORM_BLOCKS 0x8A2B GLenum
+@gl_const GL_MAX_GEOMETRY_UNIFORM_BLOCKS 0x8A2C GLenum
+@gl_const GL_MAX_FRAGMENT_UNIFORM_BLOCKS 0x8A2D GLenum
+@gl_const GL_MAX_COMBINED_UNIFORM_BLOCKS 0x8A2E GLenum
+@gl_const GL_MAX_UNIFORM_BUFFER_BINDINGS 0x8A2F GLenum
+@gl_const GL_MAX_UNIFORM_BLOCK_SIZE 0x8A30 GLenum
+@gl_const GL_MAX_COMBINED_VERTEX_UNIFORM_COMPONENTS 0x8A31 GLenum
+@gl_const GL_MAX_COMBINED_GEOMETRY_UNIFORM_COMPONENTS 0x8A32 GLenum
+@gl_const GL_MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS 0x8A33 GLenum
+@gl_const GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT 0x8A34 GLenum
+@gl_const GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH 0x8A35 GLenum
+@gl_const GL_ACTIVE_UNIFORM_BLOCKS 0x8A36 GLenum
+@gl_const GL_UNIFORM_TYPE 0x8A37 GLenum
+@gl_const GL_UNIFORM_SIZE 0x8A38 GLenum
+@gl_const GL_UNIFORM_NAME_LENGTH 0x8A39 GLenum
+@gl_const GL_UNIFORM_BLOCK_INDEX 0x8A3A GLenum
+@gl_const GL_UNIFORM_OFFSET 0x8A3B GLenum
+@gl_const GL_UNIFORM_ARRAY_STRIDE 0x8A3C GLenum
+@gl_const GL_UNIFORM_MATRIX_STRIDE 0x8A3D GLenum
+@gl_const GL_UNIFORM_IS_ROW_MAJOR 0x8A3E GLenum
+@gl_const GL_UNIFORM_BLOCK_BINDING 0x8A3F GLenum
+@gl_const GL_UNIFORM_BLOCK_DATA_SIZE 0x8A40 GLenum
+@gl_const GL_UNIFORM_BLOCK_NAME_LENGTH 0x8A41 GLenum
+@gl_const GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS 0x8A42 GLenum
+@gl_const GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES 0x8A43 GLenum
+@gl_const GL_UNIFORM_BLOCK_REFERENCED_BY_VERTEX_SHADER 0x8A44 GLenum
+@gl_const GL_UNIFORM_BLOCK_REFERENCED_BY_GEOMETRY_SHADER 0x8A45 GLenum
+@gl_const GL_UNIFORM_BLOCK_REFERENCED_BY_FRAGMENT_SHADER 0x8A46 GLenum
+@gl_const GL_FRAGMENT_SHADER 0x8B30 GLenum
+@gl_const GL_VERTEX_SHADER 0x8B31 GLenum
+@gl_const GL_MAX_FRAGMENT_UNIFORM_COMPONENTS 0x8B49 GLenum
+@gl_const GL_MAX_VERTEX_UNIFORM_COMPONENTS 0x8B4A GLenum
+@gl_const GL_MAX_VARYING_FLOATS 0x8B4B GLenum
+@gl_const GL_MAX_VARYING_COMPONENTS 0x8B4B GLenum
+@gl_const GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS 0x8B4C GLenum
+@gl_const GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS 0x8B4D GLenum
+@gl_const GL_SHADER_TYPE 0x8B4F GLenum
+@gl_const GL_FLOAT_VEC2 0x8B50 GLenum
+@gl_const GL_FLOAT_VEC3 0x8B51 GLenum
+@gl_const GL_FLOAT_VEC4 0x8B52 GLenum
+@gl_const GL_INT_VEC2 0x8B53 GLenum
+@gl_const GL_INT_VEC3 0x8B54 GLenum
+@gl_const GL_INT_VEC4 0x8B55 GLenum
+@gl_const GL_BOOL 0x8B56 GLenum
+@gl_const GL_BOOL_VEC2 0x8B57 GLenum
+@gl_const GL_BOOL_VEC3 0x8B58 GLenum
+@gl_const GL_BOOL_VEC4 0x8B59 GLenum
+@gl_const GL_FLOAT_MAT2 0x8B5A GLenum
+@gl_const GL_FLOAT_MAT3 0x8B5B GLenum
+@gl_const GL_FLOAT_MAT4 0x8B5C GLenum
+@gl_const GL_SAMPLER_1D 0x8B5D GLenum
+@gl_const GL_SAMPLER_2D 0x8B5E GLenum
+@gl_const GL_SAMPLER_3D 0x8B5F GLenum
+@gl_const GL_SAMPLER_CUBE 0x8B60 GLenum
+@gl_const GL_SAMPLER_1D_SHADOW 0x8B61 GLenum
+@gl_const GL_SAMPLER_2D_SHADOW 0x8B62 GLenum
+@gl_const GL_SAMPLER_2D_RECT 0x8B63 GLenum
+@gl_const GL_SAMPLER_2D_RECT_SHADOW 0x8B64 GLenum
+@gl_const GL_FLOAT_MAT2x3 0x8B65 GLenum
+@gl_const GL_FLOAT_MAT2x4 0x8B66 GLenum
+@gl_const GL_FLOAT_MAT3x2 0x8B67 GLenum
+@gl_const GL_FLOAT_MAT3x4 0x8B68 GLenum
+@gl_const GL_FLOAT_MAT4x2 0x8B69 GLenum
+@gl_const GL_FLOAT_MAT4x3 0x8B6A GLenum
+@gl_const GL_DELETE_STATUS 0x8B80 GLenum
+@gl_const GL_COMPILE_STATUS 0x8B81 GLenum
+@gl_const GL_LINK_STATUS 0x8B82 GLenum
+@gl_const GL_VALIDATE_STATUS 0x8B83 GLenum
+@gl_const GL_INFO_LOG_LENGTH 0x8B84 GLenum
+@gl_const GL_ATTACHED_SHADERS 0x8B85 GLenum
+@gl_const GL_ACTIVE_UNIFORMS 0x8B86 GLenum
+@gl_const GL_ACTIVE_UNIFORM_MAX_LENGTH 0x8B87 GLenum
+@gl_const GL_SHADER_SOURCE_LENGTH 0x8B88 GLenum
+@gl_const GL_ACTIVE_ATTRIBUTES 0x8B89 GLenum
+@gl_const GL_ACTIVE_ATTRIBUTE_MAX_LENGTH 0x8B8A GLenum
+@gl_const GL_FRAGMENT_SHADER_DERIVATIVE_HINT 0x8B8B GLenum
+@gl_const GL_SHADING_LANGUAGE_VERSION 0x8B8C GLenum
+@gl_const GL_CURRENT_PROGRAM 0x8B8D GLenum
+@gl_const GL_IMPLEMENTATION_COLOR_READ_TYPE 0x8B9A GLenum
+@gl_const GL_IMPLEMENTATION_COLOR_READ_FORMAT 0x8B9B GLenum
+@gl_const GL_TEXTURE_RED_TYPE 0x8C10 GLenum
+@gl_const GL_TEXTURE_GREEN_TYPE 0x8C11 GLenum
+@gl_const GL_TEXTURE_BLUE_TYPE 0x8C12 GLenum
+@gl_const GL_TEXTURE_ALPHA_TYPE 0x8C13 GLenum
+@gl_const GL_TEXTURE_DEPTH_TYPE 0x8C16 GLenum
+@gl_const GL_UNSIGNED_NORMALIZED 0x8C17 GLenum
+@gl_const GL_TEXTURE_1D_ARRAY 0x8C18 GLenum
+@gl_const GL_PROXY_TEXTURE_1D_ARRAY 0x8C19 GLenum
+@gl_const GL_TEXTURE_2D_ARRAY 0x8C1A GLenum
+@gl_const GL_PROXY_TEXTURE_2D_ARRAY 0x8C1B GLenum
+@gl_const GL_TEXTURE_BINDING_1D_ARRAY 0x8C1C GLenum
+@gl_const GL_TEXTURE_BINDING_2D_ARRAY 0x8C1D GLenum
+@gl_const GL_MAX_GEOMETRY_TEXTURE_IMAGE_UNITS 0x8C29 GLenum
+@gl_const GL_TEXTURE_BUFFER 0x8C2A GLenum
+@gl_const GL_TEXTURE_BUFFER_BINDING 0x8C2A GLenum
+@gl_const GL_MAX_TEXTURE_BUFFER_SIZE 0x8C2B GLenum
+@gl_const GL_TEXTURE_BINDING_BUFFER 0x8C2C GLenum
+@gl_const GL_TEXTURE_BUFFER_DATA_STORE_BINDING 0x8C2D GLenum
+@gl_const GL_ANY_SAMPLES_PASSED 0x8C2F GLenum
+@gl_const GL_SAMPLE_SHADING 0x8C36 GLenum
+@gl_const GL_MIN_SAMPLE_SHADING_VALUE 0x8C37 GLenum
+@gl_const GL_R11F_G11F_B10F 0x8C3A GLenum
+@gl_const GL_UNSIGNED_INT_10F_11F_11F_REV 0x8C3B GLenum
+@gl_const GL_RGB9_E5 0x8C3D GLenum
+@gl_const GL_UNSIGNED_INT_5_9_9_9_REV 0x8C3E GLenum
+@gl_const GL_TEXTURE_SHARED_SIZE 0x8C3F GLenum
+@gl_const GL_SRGB 0x8C40 GLenum
+@gl_const GL_SRGB8 0x8C41 GLenum
+@gl_const GL_SRGB_ALPHA 0x8C42 GLenum
+@gl_const GL_SRGB8_ALPHA8 0x8C43 GLenum
+@gl_const GL_COMPRESSED_SRGB 0x8C48 GLenum
+@gl_const GL_COMPRESSED_SRGB_ALPHA 0x8C49 GLenum
+@gl_const GL_TRANSFORM_FEEDBACK_VARYING_MAX_LENGTH 0x8C76 GLenum
+@gl_const GL_TRANSFORM_FEEDBACK_BUFFER_MODE 0x8C7F GLenum
+@gl_const GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_COMPONENTS 0x8C80 GLenum
+@gl_const GL_TRANSFORM_FEEDBACK_VARYINGS 0x8C83 GLenum
+@gl_const GL_TRANSFORM_FEEDBACK_BUFFER_START 0x8C84 GLenum
+@gl_const GL_TRANSFORM_FEEDBACK_BUFFER_SIZE 0x8C85 GLenum
+@gl_const GL_PRIMITIVES_GENERATED 0x8C87 GLenum
+@gl_const GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN 0x8C88 GLenum
+@gl_const GL_RASTERIZER_DISCARD 0x8C89 GLenum
+@gl_const GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS 0x8C8A GLenum
+@gl_const GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS 0x8C8B GLenum
+@gl_const GL_INTERLEAVED_ATTRIBS 0x8C8C GLenum
+@gl_const GL_SEPARATE_ATTRIBS 0x8C8D GLenum
+@gl_const GL_TRANSFORM_FEEDBACK_BUFFER 0x8C8E GLenum
+@gl_const GL_TRANSFORM_FEEDBACK_BUFFER_BINDING 0x8C8F GLenum
+@gl_const GL_POINT_SPRITE_COORD_ORIGIN 0x8CA0 GLenum
+@gl_const GL_LOWER_LEFT 0x8CA1 GLenum
+@gl_const GL_UPPER_LEFT 0x8CA2 GLenum
+@gl_const GL_STENCIL_BACK_REF 0x8CA3 GLenum
+@gl_const GL_STENCIL_BACK_VALUE_MASK 0x8CA4 GLenum
+@gl_const GL_STENCIL_BACK_WRITEMASK 0x8CA5 GLenum
+@gl_const GL_DRAW_FRAMEBUFFER_BINDING 0x8CA6 GLenum
+@gl_const GL_FRAMEBUFFER_BINDING 0x8CA6 GLenum
+@gl_const GL_RENDERBUFFER_BINDING 0x8CA7 GLenum
+@gl_const GL_READ_FRAMEBUFFER 0x8CA8 GLenum
+@gl_const GL_DRAW_FRAMEBUFFER 0x8CA9 GLenum
+@gl_const GL_READ_FRAMEBUFFER_BINDING 0x8CAA GLenum
+@gl_const GL_RENDERBUFFER_SAMPLES 0x8CAB GLenum
+@gl_const GL_DEPTH_COMPONENT32F 0x8CAC GLenum
+@gl_const GL_DEPTH32F_STENCIL8 0x8CAD GLenum
+@gl_const GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE 0x8CD0 GLenum
+@gl_const GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME 0x8CD1 GLenum
+@gl_const GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL 0x8CD2 GLenum
+@gl_const GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_CUBE_MAP_FACE 0x8CD3 GLenum
+@gl_const GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LAYER 0x8CD4 GLenum
+@gl_const GL_FRAMEBUFFER_COMPLETE 0x8CD5 GLenum
+@gl_const GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT 0x8CD6 GLenum
+@gl_const GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT 0x8CD7 GLenum
+@gl_const GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER 0x8CDB GLenum
+@gl_const GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER 0x8CDC GLenum
+@gl_const GL_FRAMEBUFFER_UNSUPPORTED 0x8CDD GLenum
+@gl_const GL_MAX_COLOR_ATTACHMENTS 0x8CDF GLenum
+@gl_const GL_COLOR_ATTACHMENT0 0x8CE0 GLenum
+@gl_const GL_COLOR_ATTACHMENT1 0x8CE1 GLenum
+@gl_const GL_COLOR_ATTACHMENT2 0x8CE2 GLenum
+@gl_const GL_COLOR_ATTACHMENT3 0x8CE3 GLenum
+@gl_const GL_COLOR_ATTACHMENT4 0x8CE4 GLenum
+@gl_const GL_COLOR_ATTACHMENT5 0x8CE5 GLenum
+@gl_const GL_COLOR_ATTACHMENT6 0x8CE6 GLenum
+@gl_const GL_COLOR_ATTACHMENT7 0x8CE7 GLenum
+@gl_const GL_COLOR_ATTACHMENT8 0x8CE8 GLenum
+@gl_const GL_COLOR_ATTACHMENT9 0x8CE9 GLenum
+@gl_const GL_COLOR_ATTACHMENT10 0x8CEA GLenum
+@gl_const GL_COLOR_ATTACHMENT11 0x8CEB GLenum
+@gl_const GL_COLOR_ATTACHMENT12 0x8CEC GLenum
+@gl_const GL_COLOR_ATTACHMENT13 0x8CED GLenum
+@gl_const GL_COLOR_ATTACHMENT14 0x8CEE GLenum
+@gl_const GL_COLOR_ATTACHMENT15 0x8CEF GLenum
+@gl_const GL_COLOR_ATTACHMENT16 0x8CF0 GLenum
+@gl_const GL_COLOR_ATTACHMENT17 0x8CF1 GLenum
+@gl_const GL_COLOR_ATTACHMENT18 0x8CF2 GLenum
+@gl_const GL_COLOR_ATTACHMENT19 0x8CF3 GLenum
+@gl_const GL_COLOR_ATTACHMENT20 0x8CF4 GLenum
+@gl_const GL_COLOR_ATTACHMENT21 0x8CF5 GLenum
+@gl_const GL_COLOR_ATTACHMENT22 0x8CF6 GLenum
+@gl_const GL_COLOR_ATTACHMENT23 0x8CF7 GLenum
+@gl_const GL_COLOR_ATTACHMENT24 0x8CF8 GLenum
+@gl_const GL_COLOR_ATTACHMENT25 0x8CF9 GLenum
+@gl_const GL_COLOR_ATTACHMENT26 0x8CFA GLenum
+@gl_const GL_COLOR_ATTACHMENT27 0x8CFB GLenum
+@gl_const GL_COLOR_ATTACHMENT28 0x8CFC GLenum
+@gl_const GL_COLOR_ATTACHMENT29 0x8CFD GLenum
+@gl_const GL_COLOR_ATTACHMENT30 0x8CFE GLenum
+@gl_const GL_COLOR_ATTACHMENT31 0x8CFF GLenum
+@gl_const GL_DEPTH_ATTACHMENT 0x8D00 GLenum
+@gl_const GL_STENCIL_ATTACHMENT 0x8D20 GLenum
+@gl_const GL_FRAMEBUFFER 0x8D40 GLenum
+@gl_const GL_RENDERBUFFER 0x8D41 GLenum
+@gl_const GL_RENDERBUFFER_WIDTH 0x8D42 GLenum
+@gl_const GL_RENDERBUFFER_HEIGHT 0x8D43 GLenum
+@gl_const GL_RENDERBUFFER_INTERNAL_FORMAT 0x8D44 GLenum
+@gl_const GL_STENCIL_INDEX1 0x8D46 GLenum
+@gl_const GL_STENCIL_INDEX4 0x8D47 GLenum
+@gl_const GL_STENCIL_INDEX8 0x8D48 GLenum
+@gl_const GL_STENCIL_INDEX16 0x8D49 GLenum
+@gl_const GL_RENDERBUFFER_RED_SIZE 0x8D50 GLenum
+@gl_const GL_RENDERBUFFER_GREEN_SIZE 0x8D51 GLenum
+@gl_const GL_RENDERBUFFER_BLUE_SIZE 0x8D52 GLenum
+@gl_const GL_RENDERBUFFER_ALPHA_SIZE 0x8D53 GLenum
+@gl_const GL_RENDERBUFFER_DEPTH_SIZE 0x8D54 GLenum
+@gl_const GL_RENDERBUFFER_STENCIL_SIZE 0x8D55 GLenum
+@gl_const GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE 0x8D56 GLenum
+@gl_const GL_MAX_SAMPLES 0x8D57 GLenum
+@gl_const GL_RGB565 0x8D62 GLenum
+@gl_const GL_PRIMITIVE_RESTART_FIXED_INDEX 0x8D69 GLenum
+@gl_const GL_ANY_SAMPLES_PASSED_CONSERVATIVE 0x8D6A GLenum
+@gl_const GL_MAX_ELEMENT_INDEX 0x8D6B GLenum
+@gl_const GL_RGBA32UI 0x8D70 GLenum
+@gl_const GL_RGB32UI 0x8D71 GLenum
+@gl_const GL_RGBA16UI 0x8D76 GLenum
+@gl_const GL_RGB16UI 0x8D77 GLenum
+@gl_const GL_RGBA8UI 0x8D7C GLenum
+@gl_const GL_RGB8UI 0x8D7D GLenum
+@gl_const GL_RGBA32I 0x8D82 GLenum
+@gl_const GL_RGB32I 0x8D83 GLenum
+@gl_const GL_RGBA16I 0x8D88 GLenum
+@gl_const GL_RGB16I 0x8D89 GLenum
+@gl_const GL_RGBA8I 0x8D8E GLenum
+@gl_const GL_RGB8I 0x8D8F GLenum
+@gl_const GL_RED_INTEGER 0x8D94 GLenum
+@gl_const GL_GREEN_INTEGER 0x8D95 GLenum
+@gl_const GL_BLUE_INTEGER 0x8D96 GLenum
+@gl_const GL_RGB_INTEGER 0x8D98 GLenum
+@gl_const GL_RGBA_INTEGER 0x8D99 GLenum
+@gl_const GL_BGR_INTEGER 0x8D9A GLenum
+@gl_const GL_BGRA_INTEGER 0x8D9B GLenum
+@gl_const GL_INT_2_10_10_10_REV 0x8D9F GLenum
+@gl_const GL_FRAMEBUFFER_ATTACHMENT_LAYERED 0x8DA7 GLenum
+@gl_const GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS 0x8DA8 GLenum
+@gl_const GL_FLOAT_32_UNSIGNED_INT_24_8_REV 0x8DAD GLenum
+@gl_const GL_FRAMEBUFFER_SRGB 0x8DB9 GLenum
+@gl_const GL_COMPRESSED_RED_RGTC1 0x8DBB GLenum
+@gl_const GL_COMPRESSED_SIGNED_RED_RGTC1 0x8DBC GLenum
+@gl_const GL_COMPRESSED_RG_RGTC2 0x8DBD GLenum
+@gl_const GL_COMPRESSED_SIGNED_RG_RGTC2 0x8DBE GLenum
+@gl_const GL_SAMPLER_1D_ARRAY 0x8DC0 GLenum
+@gl_const GL_SAMPLER_2D_ARRAY 0x8DC1 GLenum
+@gl_const GL_SAMPLER_BUFFER 0x8DC2 GLenum
+@gl_const GL_SAMPLER_1D_ARRAY_SHADOW 0x8DC3 GLenum
+@gl_const GL_SAMPLER_2D_ARRAY_SHADOW 0x8DC4 GLenum
+@gl_const GL_SAMPLER_CUBE_SHADOW 0x8DC5 GLenum
+@gl_const GL_UNSIGNED_INT_VEC2 0x8DC6 GLenum
+@gl_const GL_UNSIGNED_INT_VEC3 0x8DC7 GLenum
+@gl_const GL_UNSIGNED_INT_VEC4 0x8DC8 GLenum
+@gl_const GL_INT_SAMPLER_1D 0x8DC9 GLenum
+@gl_const GL_INT_SAMPLER_2D 0x8DCA GLenum
+@gl_const GL_INT_SAMPLER_3D 0x8DCB GLenum
+@gl_const GL_INT_SAMPLER_CUBE 0x8DCC GLenum
+@gl_const GL_INT_SAMPLER_2D_RECT 0x8DCD GLenum
+@gl_const GL_INT_SAMPLER_1D_ARRAY 0x8DCE GLenum
+@gl_const GL_INT_SAMPLER_2D_ARRAY 0x8DCF GLenum
+@gl_const GL_INT_SAMPLER_BUFFER 0x8DD0 GLenum
+@gl_const GL_UNSIGNED_INT_SAMPLER_1D 0x8DD1 GLenum
+@gl_const GL_UNSIGNED_INT_SAMPLER_2D 0x8DD2 GLenum
+@gl_const GL_UNSIGNED_INT_SAMPLER_3D 0x8DD3 GLenum
+@gl_const GL_UNSIGNED_INT_SAMPLER_CUBE 0x8DD4 GLenum
+@gl_const GL_UNSIGNED_INT_SAMPLER_2D_RECT 0x8DD5 GLenum
+@gl_const GL_UNSIGNED_INT_SAMPLER_1D_ARRAY 0x8DD6 GLenum
+@gl_const GL_UNSIGNED_INT_SAMPLER_2D_ARRAY 0x8DD7 GLenum
+@gl_const GL_UNSIGNED_INT_SAMPLER_BUFFER 0x8DD8 GLenum
+@gl_const GL_GEOMETRY_SHADER 0x8DD9 GLenum
+@gl_const GL_MAX_GEOMETRY_UNIFORM_COMPONENTS 0x8DDF GLenum
+@gl_const GL_MAX_GEOMETRY_OUTPUT_VERTICES 0x8DE0 GLenum
+@gl_const GL_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS 0x8DE1 GLenum
+@gl_const GL_ACTIVE_SUBROUTINES 0x8DE5 GLenum
+@gl_const GL_ACTIVE_SUBROUTINE_UNIFORMS 0x8DE6 GLenum
+@gl_const GL_MAX_SUBROUTINES 0x8DE7 GLenum
+@gl_const GL_MAX_SUBROUTINE_UNIFORM_LOCATIONS 0x8DE8 GLenum
+@gl_const GL_LOW_FLOAT 0x8DF0 GLenum
+@gl_const GL_MEDIUM_FLOAT 0x8DF1 GLenum
+@gl_const GL_HIGH_FLOAT 0x8DF2 GLenum
+@gl_const GL_LOW_INT 0x8DF3 GLenum
+@gl_const GL_MEDIUM_INT 0x8DF4 GLenum
+@gl_const GL_HIGH_INT 0x8DF5 GLenum
+@gl_const GL_SHADER_BINARY_FORMATS 0x8DF8 GLenum
+@gl_const GL_NUM_SHADER_BINARY_FORMATS 0x8DF9 GLenum
+@gl_const GL_SHADER_COMPILER 0x8DFA GLenum
+@gl_const GL_MAX_VERTEX_UNIFORM_VECTORS 0x8DFB GLenum
+@gl_const GL_MAX_VARYING_VECTORS 0x8DFC GLenum
+@gl_const GL_MAX_FRAGMENT_UNIFORM_VECTORS 0x8DFD GLenum
+@gl_const GL_QUERY_WAIT 0x8E13 GLenum
+@gl_const GL_QUERY_NO_WAIT 0x8E14 GLenum
+@gl_const GL_QUERY_BY_REGION_WAIT 0x8E15 GLenum
+@gl_const GL_QUERY_BY_REGION_NO_WAIT 0x8E16 GLenum
+@gl_const GL_QUERY_WAIT_INVERTED 0x8E17 GLenum
+@gl_const GL_QUERY_NO_WAIT_INVERTED 0x8E18 GLenum
+@gl_const GL_QUERY_BY_REGION_WAIT_INVERTED 0x8E19 GLenum
+@gl_const GL_QUERY_BY_REGION_NO_WAIT_INVERTED 0x8E1A GLenum
+@gl_const GL_MAX_COMBINED_TESS_CONTROL_UNIFORM_COMPONENTS 0x8E1E GLenum
+@gl_const GL_MAX_COMBINED_TESS_EVALUATION_UNIFORM_COMPONENTS 0x8E1F GLenum
+@gl_const GL_TRANSFORM_FEEDBACK 0x8E22 GLenum
+@gl_const GL_TRANSFORM_FEEDBACK_BUFFER_PAUSED 0x8E23 GLenum
+@gl_const GL_TRANSFORM_FEEDBACK_PAUSED 0x8E23 GLenum
+@gl_const GL_TRANSFORM_FEEDBACK_BUFFER_ACTIVE 0x8E24 GLenum
+@gl_const GL_TRANSFORM_FEEDBACK_ACTIVE 0x8E24 GLenum
+@gl_const GL_TRANSFORM_FEEDBACK_BINDING 0x8E25 GLenum
+@gl_const GL_TIMESTAMP 0x8E28 GLenum
+@gl_const GL_TEXTURE_SWIZZLE_R 0x8E42 GLenum
+@gl_const GL_TEXTURE_SWIZZLE_G 0x8E43 GLenum
+@gl_const GL_TEXTURE_SWIZZLE_B 0x8E44 GLenum
+@gl_const GL_TEXTURE_SWIZZLE_A 0x8E45 GLenum
+@gl_const GL_TEXTURE_SWIZZLE_RGBA 0x8E46 GLenum
+@gl_const GL_ACTIVE_SUBROUTINE_UNIFORM_LOCATIONS 0x8E47 GLenum
+@gl_const GL_ACTIVE_SUBROUTINE_MAX_LENGTH 0x8E48 GLenum
+@gl_const GL_ACTIVE_SUBROUTINE_UNIFORM_MAX_LENGTH 0x8E49 GLenum
+@gl_const GL_NUM_COMPATIBLE_SUBROUTINES 0x8E4A GLenum
+@gl_const GL_COMPATIBLE_SUBROUTINES 0x8E4B GLenum
+@gl_const GL_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION 0x8E4C GLenum
+@gl_const GL_FIRST_VERTEX_CONVENTION 0x8E4D GLenum
+@gl_const GL_LAST_VERTEX_CONVENTION 0x8E4E GLenum
+@gl_const GL_PROVOKING_VERTEX 0x8E4F GLenum
+@gl_const GL_SAMPLE_POSITION 0x8E50 GLenum
+@gl_const GL_SAMPLE_MASK 0x8E51 GLenum
+@gl_const GL_SAMPLE_MASK_VALUE 0x8E52 GLenum
+@gl_const GL_MAX_SAMPLE_MASK_WORDS 0x8E59 GLenum
+@gl_const GL_MAX_GEOMETRY_SHADER_INVOCATIONS 0x8E5A GLenum
+@gl_const GL_MIN_FRAGMENT_INTERPOLATION_OFFSET 0x8E5B GLenum
+@gl_const GL_MAX_FRAGMENT_INTERPOLATION_OFFSET 0x8E5C GLenum
+@gl_const GL_FRAGMENT_INTERPOLATION_OFFSET_BITS 0x8E5D GLenum
+@gl_const GL_MIN_PROGRAM_TEXTURE_GATHER_OFFSET 0x8E5E GLenum
+@gl_const GL_MAX_PROGRAM_TEXTURE_GATHER_OFFSET 0x8E5F GLenum
+@gl_const GL_MAX_TRANSFORM_FEEDBACK_BUFFERS 0x8E70 GLenum
+@gl_const GL_MAX_VERTEX_STREAMS 0x8E71 GLenum
+@gl_const GL_PATCH_VERTICES 0x8E72 GLenum
+@gl_const GL_PATCH_DEFAULT_INNER_LEVEL 0x8E73 GLenum
+@gl_const GL_PATCH_DEFAULT_OUTER_LEVEL 0x8E74 GLenum
+@gl_const GL_TESS_CONTROL_OUTPUT_VERTICES 0x8E75 GLenum
+@gl_const GL_TESS_GEN_MODE 0x8E76 GLenum
+@gl_const GL_TESS_GEN_SPACING 0x8E77 GLenum
+@gl_const GL_TESS_GEN_VERTEX_ORDER 0x8E78 GLenum
+@gl_const GL_TESS_GEN_POINT_MODE 0x8E79 GLenum
+@gl_const GL_ISOLINES 0x8E7A GLenum
+@gl_const GL_FRACTIONAL_ODD 0x8E7B GLenum
+@gl_const GL_FRACTIONAL_EVEN 0x8E7C GLenum
+@gl_const GL_MAX_PATCH_VERTICES 0x8E7D GLenum
+@gl_const GL_MAX_TESS_GEN_LEVEL 0x8E7E GLenum
+@gl_const GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS 0x8E7F GLenum
+@gl_const GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS 0x8E80 GLenum
+@gl_const GL_MAX_TESS_CONTROL_TEXTURE_IMAGE_UNITS 0x8E81 GLenum
+@gl_const GL_MAX_TESS_EVALUATION_TEXTURE_IMAGE_UNITS 0x8E82 GLenum
+@gl_const GL_MAX_TESS_CONTROL_OUTPUT_COMPONENTS 0x8E83 GLenum
+@gl_const GL_MAX_TESS_PATCH_COMPONENTS 0x8E84 GLenum
+@gl_const GL_MAX_TESS_CONTROL_TOTAL_OUTPUT_COMPONENTS 0x8E85 GLenum
+@gl_const GL_MAX_TESS_EVALUATION_OUTPUT_COMPONENTS 0x8E86 GLenum
+@gl_const GL_TESS_EVALUATION_SHADER 0x8E87 GLenum
+@gl_const GL_TESS_CONTROL_SHADER 0x8E88 GLenum
+@gl_const GL_MAX_TESS_CONTROL_UNIFORM_BLOCKS 0x8E89 GLenum
+@gl_const GL_MAX_TESS_EVALUATION_UNIFORM_BLOCKS 0x8E8A GLenum
+@gl_const GL_COMPRESSED_RGBA_BPTC_UNORM 0x8E8C GLenum
+@gl_const GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM 0x8E8D GLenum
+@gl_const GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT 0x8E8E GLenum
+@gl_const GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT 0x8E8F GLenum
+@gl_const GL_COPY_READ_BUFFER 0x8F36 GLenum
+@gl_const GL_COPY_READ_BUFFER_BINDING 0x8F36 GLenum
+@gl_const GL_COPY_WRITE_BUFFER 0x8F37 GLenum
+@gl_const GL_COPY_WRITE_BUFFER_BINDING 0x8F37 GLenum
+@gl_const GL_MAX_IMAGE_UNITS 0x8F38 GLenum
+@gl_const GL_MAX_COMBINED_IMAGE_UNITS_AND_FRAGMENT_OUTPUTS 0x8F39 GLenum
+@gl_const GL_MAX_COMBINED_SHADER_OUTPUT_RESOURCES 0x8F39 GLenum
+@gl_const GL_IMAGE_BINDING_NAME 0x8F3A GLenum
+@gl_const GL_IMAGE_BINDING_LEVEL 0x8F3B GLenum
+@gl_const GL_IMAGE_BINDING_LAYERED 0x8F3C GLenum
+@gl_const GL_IMAGE_BINDING_LAYER 0x8F3D GLenum
+@gl_const GL_IMAGE_BINDING_ACCESS 0x8F3E GLenum
+@gl_const GL_DRAW_INDIRECT_BUFFER 0x8F3F GLenum
+@gl_const GL_DRAW_INDIRECT_BUFFER_BINDING 0x8F43 GLenum
+@gl_const GL_DOUBLE_MAT2 0x8F46 GLenum
+@gl_const GL_DOUBLE_MAT3 0x8F47 GLenum
+@gl_const GL_DOUBLE_MAT4 0x8F48 GLenum
+@gl_const GL_DOUBLE_MAT2x3 0x8F49 GLenum
+@gl_const GL_DOUBLE_MAT2x4 0x8F4A GLenum
+@gl_const GL_DOUBLE_MAT3x2 0x8F4B GLenum
+@gl_const GL_DOUBLE_MAT3x4 0x8F4C GLenum
+@gl_const GL_DOUBLE_MAT4x2 0x8F4D GLenum
+@gl_const GL_DOUBLE_MAT4x3 0x8F4E GLenum
+@gl_const GL_VERTEX_BINDING_BUFFER 0x8F4F GLenum
+@gl_const GL_R8_SNORM 0x8F94 GLenum
+@gl_const GL_RG8_SNORM 0x8F95 GLenum
+@gl_const GL_RGB8_SNORM 0x8F96 GLenum
+@gl_const GL_RGBA8_SNORM 0x8F97 GLenum
+@gl_const GL_R16_SNORM 0x8F98 GLenum
+@gl_const GL_RG16_SNORM 0x8F99 GLenum
+@gl_const GL_RGB16_SNORM 0x8F9A GLenum
+@gl_const GL_RGBA16_SNORM 0x8F9B GLenum
+@gl_const GL_SIGNED_NORMALIZED 0x8F9C GLenum
+@gl_const GL_PRIMITIVE_RESTART 0x8F9D GLenum
+@gl_const GL_PRIMITIVE_RESTART_INDEX 0x8F9E GLenum
+@gl_const GL_DOUBLE_VEC2 0x8FFC GLenum
+@gl_const GL_DOUBLE_VEC3 0x8FFD GLenum
+@gl_const GL_DOUBLE_VEC4 0x8FFE GLenum
+@gl_const GL_TEXTURE_CUBE_MAP_ARRAY 0x9009 GLenum
+@gl_const GL_TEXTURE_BINDING_CUBE_MAP_ARRAY 0x900A GLenum
+@gl_const GL_PROXY_TEXTURE_CUBE_MAP_ARRAY 0x900B GLenum
+@gl_const GL_SAMPLER_CUBE_MAP_ARRAY 0x900C GLenum
+@gl_const GL_SAMPLER_CUBE_MAP_ARRAY_SHADOW 0x900D GLenum
+@gl_const GL_INT_SAMPLER_CUBE_MAP_ARRAY 0x900E GLenum
+@gl_const GL_UNSIGNED_INT_SAMPLER_CUBE_MAP_ARRAY 0x900F GLenum
+@gl_const GL_IMAGE_1D 0x904C GLenum
+@gl_const GL_IMAGE_2D 0x904D GLenum
+@gl_const GL_IMAGE_3D 0x904E GLenum
+@gl_const GL_IMAGE_2D_RECT 0x904F GLenum
+@gl_const GL_IMAGE_CUBE 0x9050 GLenum
+@gl_const GL_IMAGE_BUFFER 0x9051 GLenum
+@gl_const GL_IMAGE_1D_ARRAY 0x9052 GLenum
+@gl_const GL_IMAGE_2D_ARRAY 0x9053 GLenum
+@gl_const GL_IMAGE_CUBE_MAP_ARRAY 0x9054 GLenum
+@gl_const GL_IMAGE_2D_MULTISAMPLE 0x9055 GLenum
+@gl_const GL_IMAGE_2D_MULTISAMPLE_ARRAY 0x9056 GLenum
+@gl_const GL_INT_IMAGE_1D 0x9057 GLenum
+@gl_const GL_INT_IMAGE_2D 0x9058 GLenum
+@gl_const GL_INT_IMAGE_3D 0x9059 GLenum
+@gl_const GL_INT_IMAGE_2D_RECT 0x905A GLenum
+@gl_const GL_INT_IMAGE_CUBE 0x905B GLenum
+@gl_const GL_INT_IMAGE_BUFFER 0x905C GLenum
+@gl_const GL_INT_IMAGE_1D_ARRAY 0x905D GLenum
+@gl_const GL_INT_IMAGE_2D_ARRAY 0x905E GLenum
+@gl_const GL_INT_IMAGE_CUBE_MAP_ARRAY 0x905F GLenum
+@gl_const GL_INT_IMAGE_2D_MULTISAMPLE 0x9060 GLenum
+@gl_const GL_INT_IMAGE_2D_MULTISAMPLE_ARRAY 0x9061 GLenum
+@gl_const GL_UNSIGNED_INT_IMAGE_1D 0x9062 GLenum
+@gl_const GL_UNSIGNED_INT_IMAGE_2D 0x9063 GLenum
+@gl_const GL_UNSIGNED_INT_IMAGE_3D 0x9064 GLenum
+@gl_const GL_UNSIGNED_INT_IMAGE_2D_RECT 0x9065 GLenum
+@gl_const GL_UNSIGNED_INT_IMAGE_CUBE 0x9066 GLenum
+@gl_const GL_UNSIGNED_INT_IMAGE_BUFFER 0x9067 GLenum
+@gl_const GL_UNSIGNED_INT_IMAGE_1D_ARRAY 0x9068 GLenum
+@gl_const GL_UNSIGNED_INT_IMAGE_2D_ARRAY 0x9069 GLenum
+@gl_const GL_UNSIGNED_INT_IMAGE_CUBE_MAP_ARRAY 0x906A GLenum
+@gl_const GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE 0x906B GLenum
+@gl_const GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY 0x906C GLenum
+@gl_const GL_MAX_IMAGE_SAMPLES 0x906D GLenum
+@gl_const GL_IMAGE_BINDING_FORMAT 0x906E GLenum
+@gl_const GL_RGB10_A2UI 0x906F GLenum
+@gl_const GL_MIN_MAP_BUFFER_ALIGNMENT 0x90BC GLenum
+@gl_const GL_IMAGE_FORMAT_COMPATIBILITY_TYPE 0x90C7 GLenum
+@gl_const GL_IMAGE_FORMAT_COMPATIBILITY_BY_SIZE 0x90C8 GLenum
+@gl_const GL_IMAGE_FORMAT_COMPATIBILITY_BY_CLASS 0x90C9 GLenum
+@gl_const GL_MAX_VERTEX_IMAGE_UNIFORMS 0x90CA GLenum
+@gl_const GL_MAX_TESS_CONTROL_IMAGE_UNIFORMS 0x90CB GLenum
+@gl_const GL_MAX_TESS_EVALUATION_IMAGE_UNIFORMS 0x90CC GLenum
+@gl_const GL_MAX_GEOMETRY_IMAGE_UNIFORMS 0x90CD GLenum
+@gl_const GL_MAX_FRAGMENT_IMAGE_UNIFORMS 0x90CE GLenum
+@gl_const GL_MAX_COMBINED_IMAGE_UNIFORMS 0x90CF GLenum
+@gl_const GL_SHADER_STORAGE_BUFFER 0x90D2 GLenum
+@gl_const GL_SHADER_STORAGE_BUFFER_BINDING 0x90D3 GLenum
+@gl_const GL_SHADER_STORAGE_BUFFER_START 0x90D4 GLenum
+@gl_const GL_SHADER_STORAGE_BUFFER_SIZE 0x90D5 GLenum
+@gl_const GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS 0x90D6 GLenum
+@gl_const GL_MAX_GEOMETRY_SHADER_STORAGE_BLOCKS 0x90D7 GLenum
+@gl_const GL_MAX_TESS_CONTROL_SHADER_STORAGE_BLOCKS 0x90D8 GLenum
+@gl_const GL_MAX_TESS_EVALUATION_SHADER_STORAGE_BLOCKS 0x90D9 GLenum
+@gl_const GL_MAX_FRAGMENT_SHADER_STORAGE_BLOCKS 0x90DA GLenum
+@gl_const GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS 0x90DB GLenum
+@gl_const GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS 0x90DC GLenum
+@gl_const GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS 0x90DD GLenum
+@gl_const GL_MAX_SHADER_STORAGE_BLOCK_SIZE 0x90DE GLenum
+@gl_const GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT 0x90DF GLenum
+@gl_const GL_DEPTH_STENCIL_TEXTURE_MODE 0x90EA GLenum
+@gl_const GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS 0x90EB GLenum
+@gl_const GL_UNIFORM_BLOCK_REFERENCED_BY_COMPUTE_SHADER 0x90EC GLenum
+@gl_const GL_ATOMIC_COUNTER_BUFFER_REFERENCED_BY_COMPUTE_SHADER 0x90ED GLenum
+@gl_const GL_DISPATCH_INDIRECT_BUFFER 0x90EE GLenum
+@gl_const GL_DISPATCH_INDIRECT_BUFFER_BINDING 0x90EF GLenum
+@gl_const GL_TEXTURE_2D_MULTISAMPLE 0x9100 GLenum
+@gl_const GL_PROXY_TEXTURE_2D_MULTISAMPLE 0x9101 GLenum
+@gl_const GL_TEXTURE_2D_MULTISAMPLE_ARRAY 0x9102 GLenum
+@gl_const GL_PROXY_TEXTURE_2D_MULTISAMPLE_ARRAY 0x9103 GLenum
+@gl_const GL_TEXTURE_BINDING_2D_MULTISAMPLE 0x9104 GLenum
+@gl_const GL_TEXTURE_BINDING_2D_MULTISAMPLE_ARRAY 0x9105 GLenum
+@gl_const GL_TEXTURE_SAMPLES 0x9106 GLenum
+@gl_const GL_TEXTURE_FIXED_SAMPLE_LOCATIONS 0x9107 GLenum
+@gl_const GL_SAMPLER_2D_MULTISAMPLE 0x9108 GLenum
+@gl_const GL_INT_SAMPLER_2D_MULTISAMPLE 0x9109 GLenum
+@gl_const GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE 0x910A GLenum
+@gl_const GL_SAMPLER_2D_MULTISAMPLE_ARRAY 0x910B GLenum
+@gl_const GL_INT_SAMPLER_2D_MULTISAMPLE_ARRAY 0x910C GLenum
+@gl_const GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY 0x910D GLenum
+@gl_const GL_MAX_COLOR_TEXTURE_SAMPLES 0x910E GLenum
+@gl_const GL_MAX_DEPTH_TEXTURE_SAMPLES 0x910F GLenum
+@gl_const GL_MAX_INTEGER_SAMPLES 0x9110 GLenum
+@gl_const GL_MAX_SERVER_WAIT_TIMEOUT 0x9111 GLenum
+@gl_const GL_OBJECT_TYPE 0x9112 GLenum
+@gl_const GL_SYNC_CONDITION 0x9113 GLenum
+@gl_const GL_SYNC_STATUS 0x9114 GLenum
+@gl_const GL_SYNC_FLAGS 0x9115 GLenum
+@gl_const GL_SYNC_FENCE 0x9116 GLenum
+@gl_const GL_SYNC_GPU_COMMANDS_COMPLETE 0x9117 GLenum
+@gl_const GL_UNSIGNALED 0x9118 GLenum
+@gl_const GL_SIGNALED 0x9119 GLenum
+@gl_const GL_ALREADY_SIGNALED 0x911A GLenum
+@gl_const GL_TIMEOUT_EXPIRED 0x911B GLenum
+@gl_const GL_CONDITION_SATISFIED 0x911C GLenum
+@gl_const GL_WAIT_FAILED 0x911D GLenum
+@gl_const GL_BUFFER_ACCESS_FLAGS 0x911F GLenum
+@gl_const GL_BUFFER_MAP_LENGTH 0x9120 GLenum
+@gl_const GL_BUFFER_MAP_OFFSET 0x9121 GLenum
+@gl_const GL_MAX_VERTEX_OUTPUT_COMPONENTS 0x9122 GLenum
+@gl_const GL_MAX_GEOMETRY_INPUT_COMPONENTS 0x9123 GLenum
+@gl_const GL_MAX_GEOMETRY_OUTPUT_COMPONENTS 0x9124 GLenum
+@gl_const GL_MAX_FRAGMENT_INPUT_COMPONENTS 0x9125 GLenum
+@gl_const GL_CONTEXT_PROFILE_MASK 0x9126 GLenum
+@gl_const GL_UNPACK_COMPRESSED_BLOCK_WIDTH 0x9127 GLenum
+@gl_const GL_UNPACK_COMPRESSED_BLOCK_HEIGHT 0x9128 GLenum
+@gl_const GL_UNPACK_COMPRESSED_BLOCK_DEPTH 0x9129 GLenum
+@gl_const GL_UNPACK_COMPRESSED_BLOCK_SIZE 0x912A GLenum
+@gl_const GL_PACK_COMPRESSED_BLOCK_WIDTH 0x912B GLenum
+@gl_const GL_PACK_COMPRESSED_BLOCK_HEIGHT 0x912C GLenum
+@gl_const GL_PACK_COMPRESSED_BLOCK_DEPTH 0x912D GLenum
+@gl_const GL_PACK_COMPRESSED_BLOCK_SIZE 0x912E GLenum
+@gl_const GL_TEXTURE_IMMUTABLE_FORMAT 0x912F GLenum
+@gl_const GL_MAX_DEBUG_MESSAGE_LENGTH 0x9143 GLenum
+@gl_const GL_MAX_DEBUG_LOGGED_MESSAGES 0x9144 GLenum
+@gl_const GL_DEBUG_LOGGED_MESSAGES 0x9145 GLenum
+@gl_const GL_DEBUG_SEVERITY_HIGH 0x9146 GLenum
+@gl_const GL_DEBUG_SEVERITY_MEDIUM 0x9147 GLenum
+@gl_const GL_DEBUG_SEVERITY_LOW 0x9148 GLenum
+@gl_const GL_QUERY_BUFFER 0x9192 GLenum
+@gl_const GL_QUERY_BUFFER_BINDING 0x9193 GLenum
+@gl_const GL_QUERY_RESULT_NO_WAIT 0x9194 GLenum
+@gl_const GL_TEXTURE_BUFFER_OFFSET 0x919D GLenum
+@gl_const GL_TEXTURE_BUFFER_SIZE 0x919E GLenum
+@gl_const GL_TEXTURE_BUFFER_OFFSET_ALIGNMENT 0x919F GLenum
+@gl_const GL_COMPUTE_SHADER 0x91B9 GLenum
+@gl_const GL_MAX_COMPUTE_UNIFORM_BLOCKS 0x91BB GLenum
+@gl_const GL_MAX_COMPUTE_TEXTURE_IMAGE_UNITS 0x91BC GLenum
+@gl_const GL_MAX_COMPUTE_IMAGE_UNIFORMS 0x91BD GLenum
+@gl_const GL_MAX_COMPUTE_WORK_GROUP_COUNT 0x91BE GLenum
+@gl_const GL_MAX_COMPUTE_WORK_GROUP_SIZE 0x91BF GLenum
+@gl_const GL_COMPRESSED_R11_EAC 0x9270 GLenum
+@gl_const GL_COMPRESSED_SIGNED_R11_EAC 0x9271 GLenum
+@gl_const GL_COMPRESSED_RG11_EAC 0x9272 GLenum
+@gl_const GL_COMPRESSED_SIGNED_RG11_EAC 0x9273 GLenum
+@gl_const GL_COMPRESSED_RGB8_ETC2 0x9274 GLenum
+@gl_const GL_COMPRESSED_SRGB8_ETC2 0x9275 GLenum
+@gl_const GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2 0x9276 GLenum
+@gl_const GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2 0x9277 GLenum
+@gl_const GL_COMPRESSED_RGBA8_ETC2_EAC 0x9278 GLenum
+@gl_const GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC 0x9279 GLenum
+@gl_const GL_ATOMIC_COUNTER_BUFFER 0x92C0 GLenum
+@gl_const GL_ATOMIC_COUNTER_BUFFER_BINDING 0x92C1 GLenum
+@gl_const GL_ATOMIC_COUNTER_BUFFER_START 0x92C2 GLenum
+@gl_const GL_ATOMIC_COUNTER_BUFFER_SIZE 0x92C3 GLenum
+@gl_const GL_ATOMIC_COUNTER_BUFFER_DATA_SIZE 0x92C4 GLenum
+@gl_const GL_ATOMIC_COUNTER_BUFFER_ACTIVE_ATOMIC_COUNTERS 0x92C5 GLenum
+@gl_const GL_ATOMIC_COUNTER_BUFFER_ACTIVE_ATOMIC_COUNTER_INDICES 0x92C6 GLenum
+@gl_const GL_ATOMIC_COUNTER_BUFFER_REFERENCED_BY_VERTEX_SHADER 0x92C7 GLenum
+@gl_const GL_ATOMIC_COUNTER_BUFFER_REFERENCED_BY_TESS_CONTROL_SHADER 0x92C8 GLenum
+@gl_const GL_ATOMIC_COUNTER_BUFFER_REFERENCED_BY_TESS_EVALUATION_SHADER 0x92C9 GLenum
+@gl_const GL_ATOMIC_COUNTER_BUFFER_REFERENCED_BY_GEOMETRY_SHADER 0x92CA GLenum
+@gl_const GL_ATOMIC_COUNTER_BUFFER_REFERENCED_BY_FRAGMENT_SHADER 0x92CB GLenum
+@gl_const GL_MAX_VERTEX_ATOMIC_COUNTER_BUFFERS 0x92CC GLenum
+@gl_const GL_MAX_TESS_CONTROL_ATOMIC_COUNTER_BUFFERS 0x92CD GLenum
+@gl_const GL_MAX_TESS_EVALUATION_ATOMIC_COUNTER_BUFFERS 0x92CE GLenum
+@gl_const GL_MAX_GEOMETRY_ATOMIC_COUNTER_BUFFERS 0x92CF GLenum
+@gl_const GL_MAX_FRAGMENT_ATOMIC_COUNTER_BUFFERS 0x92D0 GLenum
+@gl_const GL_MAX_COMBINED_ATOMIC_COUNTER_BUFFERS 0x92D1 GLenum
+@gl_const GL_MAX_VERTEX_ATOMIC_COUNTERS 0x92D2 GLenum
+@gl_const GL_MAX_TESS_CONTROL_ATOMIC_COUNTERS 0x92D3 GLenum
+@gl_const GL_MAX_TESS_EVALUATION_ATOMIC_COUNTERS 0x92D4 GLenum
+@gl_const GL_MAX_GEOMETRY_ATOMIC_COUNTERS 0x92D5 GLenum
+@gl_const GL_MAX_FRAGMENT_ATOMIC_COUNTERS 0x92D6 GLenum
+@gl_const GL_MAX_COMBINED_ATOMIC_COUNTERS 0x92D7 GLenum
+@gl_const GL_MAX_ATOMIC_COUNTER_BUFFER_SIZE 0x92D8 GLenum
+@gl_const GL_ACTIVE_ATOMIC_COUNTER_BUFFERS 0x92D9 GLenum
+@gl_const GL_UNIFORM_ATOMIC_COUNTER_BUFFER_INDEX 0x92DA GLenum
+@gl_const GL_UNSIGNED_INT_ATOMIC_COUNTER 0x92DB GLenum
+@gl_const GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS 0x92DC GLenum
+@gl_const GL_DEBUG_OUTPUT 0x92E0 GLenum
+@gl_const GL_UNIFORM 0x92E1 GLenum
+@gl_const GL_UNIFORM_BLOCK 0x92E2 GLenum
+@gl_const GL_PROGRAM_INPUT 0x92E3 GLenum
+@gl_const GL_PROGRAM_OUTPUT 0x92E4 GLenum
+@gl_const GL_BUFFER_VARIABLE 0x92E5 GLenum
+@gl_const GL_SHADER_STORAGE_BLOCK 0x92E6 GLenum
+@gl_const GL_IS_PER_PATCH 0x92E7 GLenum
+@gl_const GL_VERTEX_SUBROUTINE 0x92E8 GLenum
+@gl_const GL_TESS_CONTROL_SUBROUTINE 0x92E9 GLenum
+@gl_const GL_TESS_EVALUATION_SUBROUTINE 0x92EA GLenum
+@gl_const GL_GEOMETRY_SUBROUTINE 0x92EB GLenum
+@gl_const GL_FRAGMENT_SUBROUTINE 0x92EC GLenum
+@gl_const GL_COMPUTE_SUBROUTINE 0x92ED GLenum
+@gl_const GL_VERTEX_SUBROUTINE_UNIFORM 0x92EE GLenum
+@gl_const GL_TESS_CONTROL_SUBROUTINE_UNIFORM 0x92EF GLenum
+@gl_const GL_TESS_EVALUATION_SUBROUTINE_UNIFORM 0x92F0 GLenum
+@gl_const GL_GEOMETRY_SUBROUTINE_UNIFORM 0x92F1 GLenum
+@gl_const GL_FRAGMENT_SUBROUTINE_UNIFORM 0x92F2 GLenum
+@gl_const GL_COMPUTE_SUBROUTINE_UNIFORM 0x92F3 GLenum
+@gl_const GL_TRANSFORM_FEEDBACK_VARYING 0x92F4 GLenum
+@gl_const GL_ACTIVE_RESOURCES 0x92F5 GLenum
+@gl_const GL_MAX_NAME_LENGTH 0x92F6 GLenum
+@gl_const GL_MAX_NUM_ACTIVE_VARIABLES 0x92F7 GLenum
+@gl_const GL_MAX_NUM_COMPATIBLE_SUBROUTINES 0x92F8 GLenum
+@gl_const GL_NAME_LENGTH 0x92F9 GLenum
+@gl_const GL_TYPE 0x92FA GLenum
+@gl_const GL_ARRAY_SIZE 0x92FB GLenum
+@gl_const GL_OFFSET 0x92FC GLenum
+@gl_const GL_BLOCK_INDEX 0x92FD GLenum
+@gl_const GL_ARRAY_STRIDE 0x92FE GLenum
+@gl_const GL_MATRIX_STRIDE 0x92FF GLenum
+@gl_const GL_IS_ROW_MAJOR 0x9300 GLenum
+@gl_const GL_ATOMIC_COUNTER_BUFFER_INDEX 0x9301 GLenum
+@gl_const GL_BUFFER_BINDING 0x9302 GLenum
+@gl_const GL_BUFFER_DATA_SIZE 0x9303 GLenum
+@gl_const GL_NUM_ACTIVE_VARIABLES 0x9304 GLenum
+@gl_const GL_ACTIVE_VARIABLES 0x9305 GLenum
+@gl_const GL_REFERENCED_BY_VERTEX_SHADER 0x9306 GLenum
+@gl_const GL_REFERENCED_BY_TESS_CONTROL_SHADER 0x9307 GLenum
+@gl_const GL_REFERENCED_BY_TESS_EVALUATION_SHADER 0x9308 GLenum
+@gl_const GL_REFERENCED_BY_GEOMETRY_SHADER 0x9309 GLenum
+@gl_const GL_REFERENCED_BY_FRAGMENT_SHADER 0x930A GLenum
+@gl_const GL_REFERENCED_BY_COMPUTE_SHADER 0x930B GLenum
+@gl_const GL_TOP_LEVEL_ARRAY_SIZE 0x930C GLenum
+@gl_const GL_TOP_LEVEL_ARRAY_STRIDE 0x930D GLenum
+@gl_const GL_LOCATION 0x930E GLenum
+@gl_const GL_LOCATION_INDEX 0x930F GLenum
+@gl_const GL_FRAMEBUFFER_DEFAULT_WIDTH 0x9310 GLenum
+@gl_const GL_FRAMEBUFFER_DEFAULT_HEIGHT 0x9311 GLenum
+@gl_const GL_FRAMEBUFFER_DEFAULT_LAYERS 0x9312 GLenum
+@gl_const GL_FRAMEBUFFER_DEFAULT_SAMPLES 0x9313 GLenum
+@gl_const GL_FRAMEBUFFER_DEFAULT_FIXED_SAMPLE_LOCATIONS 0x9314 GLenum
+@gl_const GL_MAX_FRAMEBUFFER_WIDTH 0x9315 GLenum
+@gl_const GL_MAX_FRAMEBUFFER_HEIGHT 0x9316 GLenum
+@gl_const GL_MAX_FRAMEBUFFER_LAYERS 0x9317 GLenum
+@gl_const GL_MAX_FRAMEBUFFER_SAMPLES 0x9318 GLenum
+@gl_const GL_LOCATION_COMPONENT 0x934A GLenum
+@gl_const GL_TRANSFORM_FEEDBACK_BUFFER_INDEX 0x934B GLenum
+@gl_const GL_TRANSFORM_FEEDBACK_BUFFER_STRIDE 0x934C GLenum
+@gl_const GL_CLIP_ORIGIN 0x935C GLenum
+@gl_const GL_CLIP_DEPTH_MODE 0x935D GLenum
+@gl_const GL_NEGATIVE_ONE_TO_ONE 0x935E GLenum
+@gl_const GL_ZERO_TO_ONE 0x935F GLenum
+@gl_const GL_CLEAR_TEXTURE 0x9365 GLenum
+@gl_const GL_NUM_SAMPLE_COUNTS 0x9380 GLenum
+
+@gl_function glActiveShaderProgram(pipeline::GLuint, program::GLuint)::Void
+@gl_function glActiveTexture(texture::GLenum)::Void
+@gl_function glAttachShader(program::GLuint, shader::GLuint)::Void
+@gl_function glBeginConditionalRender(id::GLuint, mode::GLenum)::Void
+@gl_function glBeginQuery(target::GLenum, id::GLuint)::Void
+@gl_function glBeginQueryIndexed(target::GLenum, index::GLuint, id::GLuint)::Void
+@gl_function glBeginTransformFeedback(primitiveMode::GLenum)::Void
+@gl_function glBindAttribLocation(program::GLuint, index::GLuint, name::Ptr{GLchar})::Void
+@gl_function glBindBuffer(target::GLenum, buffer::GLuint)::Void
+@gl_function glBindBufferBase(target::GLenum, index::GLuint, buffer::GLuint)::Void
+@gl_function glBindBufferRange(target::GLenum, index::GLuint, buffer::GLuint, offset::GLintptr, size::GLsizeiptr)::Void
+@gl_function glBindBuffersBase(target::GLenum, first::GLuint, count::GLsizei, buffers::Ptr{GLuint})::Void
+@gl_function glBindBuffersRange(target::GLenum, first::GLuint, count::GLsizei, buffers::Ptr{GLuint}, offsets::Ptr{GLintptr}, sizes::Ptr{GLsizeiptr})::Void
+@gl_function glBindFragDataLocation(program::GLuint, color::GLuint, name::Ptr{GLchar})::Void
+@gl_function glBindFragDataLocationIndexed(program::GLuint, colorNumber::GLuint, index::GLuint, name::Ptr{GLchar})::Void
+@gl_function glBindFramebuffer(target::GLenum, framebuffer::GLuint)::Void
+@gl_function glBindImageTexture(unit::GLuint, texture::GLuint, level::GLint, layered::GLboolean, layer::GLint, access::GLenum, format::GLenum)::Void
+@gl_function glBindImageTextures(first::GLuint, count::GLsizei, textures::Ptr{GLuint})::Void
+@gl_function glBindProgramPipeline(pipeline::GLuint)::Void
+@gl_function glBindRenderbuffer(target::GLenum, renderbuffer::GLuint)::Void
+@gl_function glBindSampler(unit::GLuint, sampler::GLuint)::Void
+@gl_function glBindSamplers(first::GLuint, count::GLsizei, samplers::Ptr{GLuint})::Void
+@gl_function glBindTexture(target::GLenum, texture::GLuint)::Void
+@gl_function glBindTextureUnit(unit::GLuint, texture::GLuint)::Void
+@gl_function glBindTextures(first::GLuint, count::GLsizei, textures::Ptr{GLuint})::Void
+@gl_function glBindTransformFeedback(target::GLenum, id::GLuint)::Void
+@gl_function glBindVertexArray(array::GLuint)::Void
+@gl_function glBindVertexBuffer(bindingindex::GLuint, buffer::GLuint, offset::GLintptr, stride::GLsizei)::Void
+@gl_function glBindVertexBuffers(first::GLuint, count::GLsizei, buffers::Ptr{GLuint}, offsets::Ptr{GLintptr}, strides::Ptr{GLsizei})::Void
+@gl_function glBlendColor(red::GLfloat, green::GLfloat, blue::GLfloat, alpha::GLfloat)::Void
+@gl_function glBlendEquation(mode::GLenum)::Void
+@gl_function glBlendEquationSeparate(modeRGB::GLenum, modeAlpha::GLenum)::Void
+@gl_function glBlendEquationSeparatei(buf::GLuint, modeRGB::GLenum, modeAlpha::GLenum)::Void
+@gl_function glBlendEquationi(buf::GLuint, mode::GLenum)::Void
+@gl_function glBlendFunc(sfactor::GLenum, dfactor::GLenum)::Void
+@gl_function glBlendFuncSeparate(sfactorRGB::GLenum, dfactorRGB::GLenum, sfactorAlpha::GLenum, dfactorAlpha::GLenum)::Void
+@gl_function glBlendFuncSeparatei(buf::GLuint, srcRGB::GLenum, dstRGB::GLenum, srcAlpha::GLenum, dstAlpha::GLenum)::Void
+@gl_function glBlendFunci(buf::GLuint, src::GLenum, dst::GLenum)::Void
+@gl_function glBlitFramebuffer(srcX0::GLint, srcY0::GLint, srcX1::GLint, srcY1::GLint, dstX0::GLint, dstY0::GLint, dstX1::GLint, dstY1::GLint, mask::GLbitfield, filter::GLenum)::Void
+@gl_function glBlitNamedFramebuffer(readFramebuffer::GLuint, drawFramebuffer::GLuint, srcX0::GLint, srcY0::GLint, srcX1::GLint, srcY1::GLint, dstX0::GLint, dstY0::GLint, dstX1::GLint, dstY1::GLint, mask::GLbitfield, filter::GLenum)::Void
+@gl_function glBufferData(target::GLenum, size::GLsizeiptr, data::Ptr{Void}, usage::GLenum)::Void
+@gl_function glBufferStorage(target::GLenum, size::GLsizeiptr, data::Ptr{Void}, flags::GLbitfield)::Void
+@gl_function glBufferSubData(target::GLenum, offset::GLintptr, size::GLsizeiptr, data::Ptr{Void})::Void
+@gl_function glCheckFramebufferStatus(target::GLenum)::GLenum
+@gl_function glCheckNamedFramebufferStatus(framebuffer::GLuint, target::GLenum)::GLenum
+@gl_function glClampColor(target::GLenum, clamp::GLenum)::Void
+@gl_function glClear(mask::GLbitfield)::Void
+@gl_function glClearBufferData(target::GLenum, internalformat::GLenum, format::GLenum, type_::GLenum, data::Ptr{Void})::Void
+@gl_function glClearBufferSubData(target::GLenum, internalformat::GLenum, offset::GLintptr, size::GLsizeiptr, format::GLenum, type_::GLenum, data::Ptr{Void})::Void
+@gl_function glClearBufferfi(buffer::GLenum, drawbuffer::GLint, depth::GLfloat, stencil::GLint)::Void
+@gl_function glClearBufferfv(buffer::GLenum, drawbuffer::GLint, value::Ptr{GLfloat})::Void
+@gl_function glClearBufferiv(buffer::GLenum, drawbuffer::GLint, value::Ptr{GLint})::Void
+@gl_function glClearBufferuiv(buffer::GLenum, drawbuffer::GLint, value::Ptr{GLuint})::Void
+@gl_function glClearColor(red::GLfloat, green::GLfloat, blue::GLfloat, alpha::GLfloat)::Void
+@gl_function glClearDepth(depth::GLdouble)::Void
+@gl_function glClearDepthf(d::GLfloat)::Void
+@gl_function glClearNamedBufferData(buffer::GLuint, internalformat::GLenum, format::GLenum, type_::GLenum, data::Ptr{Void})::Void
+@gl_function glClearNamedBufferSubData(buffer::GLuint, internalformat::GLenum, offset::GLintptr, size::GLsizeiptr, format::GLenum, type_::GLenum, data::Ptr{Void})::Void
+@gl_function glClearNamedFramebufferfi(framebuffer::GLuint, buffer::GLenum, drawbuffer::GLint, depth::GLfloat, stencil::GLint)::Void
+@gl_function glClearNamedFramebufferfv(framebuffer::GLuint, buffer::GLenum, drawbuffer::GLint, value::Ptr{GLfloat})::Void
+@gl_function glClearNamedFramebufferiv(framebuffer::GLuint, buffer::GLenum, drawbuffer::GLint, value::Ptr{GLint})::Void
+@gl_function glClearNamedFramebufferuiv(framebuffer::GLuint, buffer::GLenum, drawbuffer::GLint, value::Ptr{GLuint})::Void
+@gl_function glClearStencil(s::GLint)::Void
+@gl_function glClearTexImage(texture::GLuint, level::GLint, format::GLenum, type_::GLenum, data::Ptr{Void})::Void
+@gl_function glClearTexSubImage(texture::GLuint, level::GLint, xoffset::GLint, yoffset::GLint, zoffset::GLint, width::GLsizei, height::GLsizei, depth::GLsizei, format::GLenum, type_::GLenum, data::Ptr{Void})::Void
+@gl_function glClientWaitSync(sync::GLsync, flags::GLbitfield, timeout::GLuint64)::GLenum
+@gl_function glClipControl(origin::GLenum, depth::GLenum)::Void
+@gl_function glColorMask(red::GLboolean, green::GLboolean, blue::GLboolean, alpha::GLboolean)::Void
+@gl_function glColorMaski(index::GLuint, r::GLboolean, g::GLboolean, b::GLboolean, a::GLboolean)::Void
+@gl_function glColorP3ui(type_::GLenum, color::GLuint)::Void
+@gl_function glColorP3uiv(type_::GLenum, color::Ptr{GLuint})::Void
+@gl_function glColorP4ui(type_::GLenum, color::GLuint)::Void
+@gl_function glColorP4uiv(type_::GLenum, color::Ptr{GLuint})::Void
+@gl_function glCompileShader(shader::GLuint)::Void
+@gl_function glCompressedTexImage1D(target::GLenum, level::GLint, internalformat::GLenum, width::GLsizei, border::GLint, imageSize::GLsizei, data::Ptr{Void})::Void
+@gl_function glCompressedTexImage2D(target::GLenum, level::GLint, internalformat::GLenum, width::GLsizei, height::GLsizei, border::GLint, imageSize::GLsizei, data::Ptr{Void})::Void
+@gl_function glCompressedTexImage3D(target::GLenum, level::GLint, internalformat::GLenum, width::GLsizei, height::GLsizei, depth::GLsizei, border::GLint, imageSize::GLsizei, data::Ptr{Void})::Void
+@gl_function glCompressedTexSubImage1D(target::GLenum, level::GLint, xoffset::GLint, width::GLsizei, format::GLenum, imageSize::GLsizei, data::Ptr{Void})::Void
+@gl_function glCompressedTexSubImage2D(target::GLenum, level::GLint, xoffset::GLint, yoffset::GLint, width::GLsizei, height::GLsizei, format::GLenum, imageSize::GLsizei, data::Ptr{Void})::Void
+@gl_function glCompressedTexSubImage3D(target::GLenum, level::GLint, xoffset::GLint, yoffset::GLint, zoffset::GLint, width::GLsizei, height::GLsizei, depth::GLsizei, format::GLenum, imageSize::GLsizei, data::Ptr{Void})::Void
+@gl_function glCompressedTextureSubImage1D(texture::GLuint, level::GLint, xoffset::GLint, width::GLsizei, format::GLenum, imageSize::GLsizei, data::Ptr{Void})::Void
+@gl_function glCompressedTextureSubImage2D(texture::GLuint, level::GLint, xoffset::GLint, yoffset::GLint, width::GLsizei, height::GLsizei, format::GLenum, imageSize::GLsizei, data::Ptr{Void})::Void
+@gl_function glCompressedTextureSubImage3D(texture::GLuint, level::GLint, xoffset::GLint, yoffset::GLint, zoffset::GLint, width::GLsizei, height::GLsizei, depth::GLsizei, format::GLenum, imageSize::GLsizei, data::Ptr{Void})::Void
+@gl_function glCopyBufferSubData(readTarget::GLenum, writeTarget::GLenum, readOffset::GLintptr, writeOffset::GLintptr, size::GLsizeiptr)::Void
+@gl_function glCopyImageSubData(srcName::GLuint, srcTarget::GLenum, srcLevel::GLint, srcX::GLint, srcY::GLint, srcZ::GLint, dstName::GLuint, dstTarget::GLenum, dstLevel::GLint, dstX::GLint, dstY::GLint, dstZ::GLint, srcWidth::GLsizei, srcHeight::GLsizei, srcDepth::GLsizei)::Void
+@gl_function glCopyNamedBufferSubData(readBuffer::GLuint, writeBuffer::GLuint, readOffset::GLintptr, writeOffset::GLintptr, size::GLsizeiptr)::Void
+@gl_function glCopyTexImage1D(target::GLenum, level::GLint, internalformat::GLenum, x::GLint, y::GLint, width::GLsizei, border::GLint)::Void
+@gl_function glCopyTexImage2D(target::GLenum, level::GLint, internalformat::GLenum, x::GLint, y::GLint, width::GLsizei, height::GLsizei, border::GLint)::Void
+@gl_function glCopyTexSubImage1D(target::GLenum, level::GLint, xoffset::GLint, x::GLint, y::GLint, width::GLsizei)::Void
+@gl_function glCopyTexSubImage2D(target::GLenum, level::GLint, xoffset::GLint, yoffset::GLint, x::GLint, y::GLint, width::GLsizei, height::GLsizei)::Void
+@gl_function glCopyTexSubImage3D(target::GLenum, level::GLint, xoffset::GLint, yoffset::GLint, zoffset::GLint, x::GLint, y::GLint, width::GLsizei, height::GLsizei)::Void
+@gl_function glCopyTextureSubImage1D(texture::GLuint, level::GLint, xoffset::GLint, x::GLint, y::GLint, width::GLsizei)::Void
+@gl_function glCopyTextureSubImage2D(texture::GLuint, level::GLint, xoffset::GLint, yoffset::GLint, x::GLint, y::GLint, width::GLsizei, height::GLsizei)::Void
+@gl_function glCopyTextureSubImage3D(texture::GLuint, level::GLint, xoffset::GLint, yoffset::GLint, zoffset::GLint, x::GLint, y::GLint, width::GLsizei, height::GLsizei)::Void
+@gl_function glCreateBuffers(n::GLsizei, buffers::Ptr{GLuint})::Void
+@gl_function glCreateFramebuffers(n::GLsizei, framebuffers::Ptr{GLuint})::Void
+@gl_function glCreateProgram()::GLuint
+@gl_function glCreateProgramPipelines(n::GLsizei, pipelines::Ptr{GLuint})::Void
+@gl_function glCreateQueries(target::GLenum, n::GLsizei, ids::Ptr{GLuint})::Void
+@gl_function glCreateRenderbuffers(n::GLsizei, renderbuffers::Ptr{GLuint})::Void
+@gl_function glCreateSamplers(n::GLsizei, samplers::Ptr{GLuint})::Void
+@gl_function glCreateShader(type_::GLenum)::GLuint
+@gl_function glCreateShaderProgramv(type_::GLenum, count::GLsizei, strings::Ptr{Ptr{GLchar}})::GLuint
+@gl_function glCreateTextures(target::GLenum, n::GLsizei, textures::Ptr{GLuint})::Void
+@gl_function glCreateTransformFeedbacks(n::GLsizei, ids::Ptr{GLuint})::Void
+@gl_function glCreateVertexArrays(n::GLsizei, arrays::Ptr{GLuint})::Void
+@gl_function glCullFace(mode::GLenum)::Void
+@gl_function glDebugMessageCallback(callback::GLDEBUGPROC, userParam::Ptr{Void})::Void
+@gl_function glDebugMessageControl(source::GLenum, type_::GLenum, severity::GLenum, count::GLsizei, ids::Ptr{GLuint}, enabled::GLboolean)::Void
+@gl_function glDebugMessageInsert(source::GLenum, type_::GLenum, id::GLuint, severity::GLenum, length::GLsizei, buf::Ptr{GLchar})::Void
+@gl_function glDeleteBuffers(n::GLsizei, buffers::Ptr{GLuint})::Void
+@gl_function glDeleteFramebuffers(n::GLsizei, framebuffers::Ptr{GLuint})::Void
+@gl_function glDeleteProgram(program::GLuint)::Void
+@gl_function glDeleteProgramPipelines(n::GLsizei, pipelines::Ptr{GLuint})::Void
+@gl_function glDeleteQueries(n::GLsizei, ids::Ptr{GLuint})::Void
+@gl_function glDeleteRenderbuffers(n::GLsizei, renderbuffers::Ptr{GLuint})::Void
+@gl_function glDeleteSamplers(count::GLsizei, samplers::Ptr{GLuint})::Void
+@gl_function glDeleteShader(shader::GLuint)::Void
+@gl_function glDeleteSync(sync::GLsync)::Void
+@gl_function glDeleteTextures(n::GLsizei, textures::Ptr{GLuint})::Void
+@gl_function glDeleteTransformFeedbacks(n::GLsizei, ids::Ptr{GLuint})::Void
+@gl_function glDeleteVertexArrays(n::GLsizei, arrays::Ptr{GLuint})::Void
+@gl_function glDepthFunc(func::GLenum)::Void
+@gl_function glDepthMask(flag::GLboolean)::Void
+@gl_function glDepthRange(near::GLdouble, far::GLdouble)::Void
+@gl_function glDepthRangeArrayv(first::GLuint, count::GLsizei, v::Ptr{GLdouble})::Void
+@gl_function glDepthRangeIndexed(index::GLuint, n::GLdouble, f::GLdouble)::Void
+@gl_function glDepthRangef(n::GLfloat, f::GLfloat)::Void
+@gl_function glDetachShader(program::GLuint, shader::GLuint)::Void
+@gl_function glDisable(cap::GLenum)::Void
+@gl_function glDisableVertexArrayAttrib(vaobj::GLuint, index::GLuint)::Void
+@gl_function glDisableVertexAttribArray(index::GLuint)::Void
+@gl_function glDisablei(target::GLenum, index::GLuint)::Void
+@gl_function glDispatchCompute(num_groups_x::GLuint, num_groups_y::GLuint, num_groups_z::GLuint)::Void
+@gl_function glDispatchComputeIndirect(indirect::GLintptr)::Void
+@gl_function glDrawArrays(mode::GLenum, first::GLint, count::GLsizei)::Void
+@gl_function glDrawArraysIndirect(mode::GLenum, indirect::Ptr{Void})::Void
+@gl_function glDrawArraysInstanced(mode::GLenum, first::GLint, count::GLsizei, instancecount::GLsizei)::Void
+@gl_function glDrawArraysInstancedBaseInstance(mode::GLenum, first::GLint, count::GLsizei, instancecount::GLsizei, baseinstance::GLuint)::Void
+@gl_function glDrawBuffer(buf::GLenum)::Void
+@gl_function glDrawBuffers(n::GLsizei, bufs::Ptr{GLenum})::Void
+@gl_function glDrawElements(mode::GLenum, count::GLsizei, type_::GLenum, indices::Ptr{Void})::Void
+@gl_function glDrawElementsBaseVertex(mode::GLenum, count::GLsizei, type_::GLenum, indices::Ptr{Void}, basevertex::GLint)::Void
+@gl_function glDrawElementsIndirect(mode::GLenum, type_::GLenum, indirect::Ptr{Void})::Void
+@gl_function glDrawElementsInstanced(mode::GLenum, count::GLsizei, type_::GLenum, indices::Ptr{Void}, instancecount::GLsizei)::Void
+@gl_function glDrawElementsInstancedBaseInstance(mode::GLenum, count::GLsizei, type_::GLenum, indices::Ptr{Void}, instancecount::GLsizei, baseinstance::GLuint)::Void
+@gl_function glDrawElementsInstancedBaseVertex(mode::GLenum, count::GLsizei, type_::GLenum, indices::Ptr{Void}, instancecount::GLsizei, basevertex::GLint)::Void
+@gl_function glDrawElementsInstancedBaseVertexBaseInstance(mode::GLenum, count::GLsizei, type_::GLenum, indices::Ptr{Void}, instancecount::GLsizei, basevertex::GLint, baseinstance::GLuint)::Void
+@gl_function glDrawRangeElements(mode::GLenum, start::GLuint, end_::GLuint, count::GLsizei, type_::GLenum, indices::Ptr{Void})::Void
+@gl_function glDrawRangeElementsBaseVertex(mode::GLenum, start::GLuint, end_::GLuint, count::GLsizei, type_::GLenum, indices::Ptr{Void}, basevertex::GLint)::Void
+@gl_function glDrawTransformFeedback(mode::GLenum, id::GLuint)::Void
+@gl_function glDrawTransformFeedbackInstanced(mode::GLenum, id::GLuint, instancecount::GLsizei)::Void
+@gl_function glDrawTransformFeedbackStream(mode::GLenum, id::GLuint, stream::GLuint)::Void
+@gl_function glDrawTransformFeedbackStreamInstanced(mode::GLenum, id::GLuint, stream::GLuint, instancecount::GLsizei)::Void
+@gl_function glEnable(cap::GLenum)::Void
+@gl_function glEnableVertexArrayAttrib(vaobj::GLuint, index::GLuint)::Void
+@gl_function glEnableVertexAttribArray(index::GLuint)::Void
+@gl_function glEnablei(target::GLenum, index::GLuint)::Void
+@gl_function glEndConditionalRender()::Void
+@gl_function glEndQuery(target::GLenum)::Void
+@gl_function glEndQueryIndexed(target::GLenum, index::GLuint)::Void
+@gl_function glEndTransformFeedback()::Void
+@gl_function glFenceSync(condition::GLenum, flags::GLbitfield)::GLsync
+@gl_function glFinish()::Void
+@gl_function glFlush()::Void
+@gl_function glFlushMappedBufferRange(target::GLenum, offset::GLintptr, length::GLsizeiptr)::Void
+@gl_function glFlushMappedNamedBufferRange(buffer::GLuint, offset::GLintptr, length::GLsizeiptr)::Void
+@gl_function glFramebufferParameteri(target::GLenum, pname::GLenum, param::GLint)::Void
+@gl_function glFramebufferRenderbuffer(target::GLenum, attachment::GLenum, renderbuffertarget::GLenum, renderbuffer::GLuint)::Void
+@gl_function glFramebufferTexture(target::GLenum, attachment::GLenum, texture::GLuint, level::GLint)::Void
+@gl_function glFramebufferTexture1D(target::GLenum, attachment::GLenum, textarget::GLenum, texture::GLuint, level::GLint)::Void
+@gl_function glFramebufferTexture2D(target::GLenum, attachment::GLenum, textarget::GLenum, texture::GLuint, level::GLint)::Void
+@gl_function glFramebufferTexture3D(target::GLenum, attachment::GLenum, textarget::GLenum, texture::GLuint, level::GLint, zoffset::GLint)::Void
+@gl_function glFramebufferTextureLayer(target::GLenum, attachment::GLenum, texture::GLuint, level::GLint, layer::GLint)::Void
+@gl_function glFrontFace(mode::GLenum)::Void
+@gl_function glGenBuffers(n::GLsizei, buffers::Ptr{GLuint})::Void
+@gl_function glGenFramebuffers(n::GLsizei, framebuffers::Ptr{GLuint})::Void
+@gl_function glGenProgramPipelines(n::GLsizei, pipelines::Ptr{GLuint})::Void
+@gl_function glGenQueries(n::GLsizei, ids::Ptr{GLuint})::Void
+@gl_function glGenRenderbuffers(n::GLsizei, renderbuffers::Ptr{GLuint})::Void
+@gl_function glGenSamplers(count::GLsizei, samplers::Ptr{GLuint})::Void
+@gl_function glGenTextures(n::GLsizei, textures::Ptr{GLuint})::Void
+@gl_function glGenTransformFeedbacks(n::GLsizei, ids::Ptr{GLuint})::Void
+@gl_function glGenVertexArrays(n::GLsizei, arrays::Ptr{GLuint})::Void
+@gl_function glGenerateMipmap(target::GLenum)::Void
+@gl_function glGenerateTextureMipmap(texture::GLuint)::Void
+@gl_function glGetActiveAtomicCounterBufferiv(program::GLuint, bufferIndex::GLuint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetActiveAttrib(program::GLuint, index::GLuint, bufSize::GLsizei, length::Ptr{GLsizei}, size::Ptr{GLint}, type_::Ptr{GLenum}, name::Ptr{GLchar})::Void
+@gl_function glGetActiveSubroutineName(program::GLuint, shadertype::GLenum, index::GLuint, bufsize::GLsizei, length::Ptr{GLsizei}, name::Ptr{GLchar})::Void
+@gl_function glGetActiveSubroutineUniformName(program::GLuint, shadertype::GLenum, index::GLuint, bufsize::GLsizei, length::Ptr{GLsizei}, name::Ptr{GLchar})::Void
+@gl_function glGetActiveSubroutineUniformiv(program::GLuint, shadertype::GLenum, index::GLuint, pname::GLenum, values::Ptr{GLint})::Void
+@gl_function glGetActiveUniform(program::GLuint, index::GLuint, bufSize::GLsizei, length::Ptr{GLsizei}, size::Ptr{GLint}, type_::Ptr{GLenum}, name::Ptr{GLchar})::Void
+@gl_function glGetActiveUniformBlockName(program::GLuint, uniformBlockIndex::GLuint, bufSize::GLsizei, length::Ptr{GLsizei}, uniformBlockName::Ptr{GLchar})::Void
+@gl_function glGetActiveUniformBlockiv(program::GLuint, uniformBlockIndex::GLuint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetActiveUniformName(program::GLuint, uniformIndex::GLuint, bufSize::GLsizei, length::Ptr{GLsizei}, uniformName::Ptr{GLchar})::Void
+@gl_function glGetActiveUniformsiv(program::GLuint, uniformCount::GLsizei, uniformIndices::Ptr{GLuint}, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetAttachedShaders(program::GLuint, maxCount::GLsizei, count::Ptr{GLsizei}, shaders::Ptr{GLuint})::Void
+@gl_function glGetAttribLocation(program::GLuint, name::Ptr{GLchar})::GLint
+@gl_function glGetBooleani_v(target::GLenum, index::GLuint, data::Ptr{GLboolean})::Void
+@gl_function glGetBooleanv(pname::GLenum, data::Ptr{GLboolean})::Void
+@gl_function glGetBufferParameteri64v(target::GLenum, pname::GLenum, params::Ptr{GLint64})::Void
+@gl_function glGetBufferParameteriv(target::GLenum, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetBufferPointerv(target::GLenum, pname::GLenum, params::Ptr{Ptr{Void}})::Void
+@gl_function glGetBufferSubData(target::GLenum, offset::GLintptr, size::GLsizeiptr, data::Ptr{Void})::Void
+@gl_function glGetCompressedTexImage(target::GLenum, level::GLint, img::Ptr{Void})::Void
+@gl_function glGetCompressedTextureImage(texture::GLuint, level::GLint, bufSize::GLsizei, pixels::Ptr{Void})::Void
+@gl_function glGetCompressedTextureSubImage(texture::GLuint, level::GLint, xoffset::GLint, yoffset::GLint, zoffset::GLint, width::GLsizei, height::GLsizei, depth::GLsizei, bufSize::GLsizei, pixels::Ptr{Void})::Void
+@gl_function glGetDebugMessageLog(count::GLuint, bufSize::GLsizei, sources::Ptr{GLenum}, types::Ptr{GLenum}, ids::Ptr{GLuint}, severities::Ptr{GLenum}, lengths::Ptr{GLsizei}, messageLog::Ptr{GLchar})::GLuint
+@gl_function glGetDoublei_v(target::GLenum, index::GLuint, data::Ptr{GLdouble})::Void
+@gl_function glGetDoublev(pname::GLenum, data::Ptr{GLdouble})::Void
+@gl_function glGetError()::GLenum false
+@gl_function glGetFloati_v(target::GLenum, index::GLuint, data::Ptr{GLfloat})::Void
+@gl_function glGetFloatv(pname::GLenum, data::Ptr{GLfloat})::Void
+@gl_function glGetFragDataIndex(program::GLuint, name::Ptr{GLchar})::GLint
+@gl_function glGetFragDataLocation(program::GLuint, name::Ptr{GLchar})::GLint
+@gl_function glGetFramebufferAttachmentParameteriv(target::GLenum, attachment::GLenum, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetFramebufferParameteriv(target::GLenum, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetGraphicsResetStatus()::GLenum
+@gl_function glGetInteger64i_v(target::GLenum, index::GLuint, data::Ptr{GLint64})::Void
+@gl_function glGetInteger64v(pname::GLenum, data::Ptr{GLint64})::Void
+@gl_function glGetIntegeri_v(target::GLenum, index::GLuint, data::Ptr{GLint})::Void
+@gl_function glGetIntegerv(pname::GLenum, data::Ptr{GLint})::Void
+@gl_function glGetInternalformati64v(target::GLenum, internalformat::GLenum, pname::GLenum, bufSize::GLsizei, params::Ptr{GLint64})::Void
+@gl_function glGetInternalformativ(target::GLenum, internalformat::GLenum, pname::GLenum, bufSize::GLsizei, params::Ptr{GLint})::Void
+@gl_function glGetMultisamplefv(pname::GLenum, index::GLuint, val::Ptr{GLfloat})::Void
+@gl_function glGetNamedBufferParameteri64v(buffer::GLuint, pname::GLenum, params::Ptr{GLint64})::Void
+@gl_function glGetNamedBufferParameteriv(buffer::GLuint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetNamedBufferPointerv(buffer::GLuint, pname::GLenum, params::Ptr{Ptr{Void}})::Void
+@gl_function glGetNamedBufferSubData(buffer::GLuint, offset::GLintptr, size::GLsizeiptr, data::Ptr{Void})::Void
+@gl_function glGetNamedFramebufferAttachmentParameteriv(framebuffer::GLuint, attachment::GLenum, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetNamedFramebufferParameteriv(framebuffer::GLuint, pname::GLenum, param::Ptr{GLint})::Void
+@gl_function glGetNamedRenderbufferParameteriv(renderbuffer::GLuint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetObjectLabel(identifier::GLenum, name::GLuint, bufSize::GLsizei, length::Ptr{GLsizei}, label::Ptr{GLchar})::Void
+@gl_function glGetObjectPtrLabel(ptr::Ptr{Void}, bufSize::GLsizei, length::Ptr{GLsizei}, label::Ptr{GLchar})::Void
+@gl_function glGetPointerv(pname::GLenum, params::Ptr{Ptr{Void}})::Void
+@gl_function glGetProgramBinary(program::GLuint, bufSize::GLsizei, length::Ptr{GLsizei}, binaryFormat::Ptr{GLenum}, binary::Ptr{Void})::Void
+@gl_function glGetProgramInfoLog(program::GLuint, bufSize::GLsizei, length::Ptr{GLsizei}, infoLog::Ptr{GLchar})::Void
+@gl_function glGetProgramInterfaceiv(program::GLuint, programInterface::GLenum, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetProgramPipelineInfoLog(pipeline::GLuint, bufSize::GLsizei, length::Ptr{GLsizei}, infoLog::Ptr{GLchar})::Void
+@gl_function glGetProgramPipelineiv(pipeline::GLuint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetProgramResourceIndex(program::GLuint, programInterface::GLenum, name::Ptr{GLchar})::GLuint
+@gl_function glGetProgramResourceLocation(program::GLuint, programInterface::GLenum, name::Ptr{GLchar})::GLint
+@gl_function glGetProgramResourceLocationIndex(program::GLuint, programInterface::GLenum, name::Ptr{GLchar})::GLint
+@gl_function glGetProgramResourceName(program::GLuint, programInterface::GLenum, index::GLuint, bufSize::GLsizei, length::Ptr{GLsizei}, name::Ptr{GLchar})::Void
+@gl_function glGetProgramResourceiv(program::GLuint, programInterface::GLenum, index::GLuint, propCount::GLsizei, props::Ptr{GLenum}, bufSize::GLsizei, length::Ptr{GLsizei}, params::Ptr{GLint})::Void
+@gl_function glGetProgramStageiv(program::GLuint, shadertype::GLenum, pname::GLenum, values::Ptr{GLint})::Void
+@gl_function glGetProgramiv(program::GLuint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetQueryBufferObjecti64v(id::GLuint, buffer::GLuint, pname::GLenum, offset::GLintptr)::Void
+@gl_function glGetQueryBufferObjectiv(id::GLuint, buffer::GLuint, pname::GLenum, offset::GLintptr)::Void
+@gl_function glGetQueryBufferObjectui64v(id::GLuint, buffer::GLuint, pname::GLenum, offset::GLintptr)::Void
+@gl_function glGetQueryBufferObjectuiv(id::GLuint, buffer::GLuint, pname::GLenum, offset::GLintptr)::Void
+@gl_function glGetQueryIndexediv(target::GLenum, index::GLuint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetQueryObjecti64v(id::GLuint, pname::GLenum, params::Ptr{GLint64})::Void
+@gl_function glGetQueryObjectiv(id::GLuint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetQueryObjectui64v(id::GLuint, pname::GLenum, params::Ptr{GLuint64})::Void
+@gl_function glGetQueryObjectuiv(id::GLuint, pname::GLenum, params::Ptr{GLuint})::Void
+@gl_function glGetQueryiv(target::GLenum, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetRenderbufferParameteriv(target::GLenum, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetSamplerParameterIiv(sampler::GLuint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetSamplerParameterIuiv(sampler::GLuint, pname::GLenum, params::Ptr{GLuint})::Void
+@gl_function glGetSamplerParameterfv(sampler::GLuint, pname::GLenum, params::Ptr{GLfloat})::Void
+@gl_function glGetSamplerParameteriv(sampler::GLuint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetShaderInfoLog(shader::GLuint, bufSize::GLsizei, length::Ptr{GLsizei}, infoLog::Ptr{GLchar})::Void
+@gl_function glGetShaderPrecisionFormat(shadertype::GLenum, precisiontype::GLenum, range::Ptr{GLint}, precision::Ptr{GLint})::Void
+@gl_function glGetShaderSource(shader::GLuint, bufSize::GLsizei, length::Ptr{GLsizei}, source::Ptr{GLchar})::Void
+@gl_function glGetShaderiv(shader::GLuint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetString(name::GLenum)::Ptr{GLubyte}
+@gl_function glGetStringi(name::GLenum, index::GLuint)::Ptr{GLubyte}
+@gl_function glGetSubroutineIndex(program::GLuint, shadertype::GLenum, name::Ptr{GLchar})::GLuint
+@gl_function glGetSubroutineUniformLocation(program::GLuint, shadertype::GLenum, name::Ptr{GLchar})::GLint
+@gl_function glGetSynciv(sync::GLsync, pname::GLenum, bufSize::GLsizei, length::Ptr{GLsizei}, values::Ptr{GLint})::Void
+@gl_function glGetTexImage(target::GLenum, level::GLint, format::GLenum, type_::GLenum, pixels::Ptr{Void})::Void
+@gl_function glGetTexLevelParameterfv(target::GLenum, level::GLint, pname::GLenum, params::Ptr{GLfloat})::Void
+@gl_function glGetTexLevelParameteriv(target::GLenum, level::GLint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetTexParameterIiv(target::GLenum, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetTexParameterIuiv(target::GLenum, pname::GLenum, params::Ptr{GLuint})::Void
+@gl_function glGetTexParameterfv(target::GLenum, pname::GLenum, params::Ptr{GLfloat})::Void
+@gl_function glGetTexParameteriv(target::GLenum, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetTextureImage(texture::GLuint, level::GLint, format::GLenum, type_::GLenum, bufSize::GLsizei, pixels::Ptr{Void})::Void
+@gl_function glGetTextureLevelParameterfv(texture::GLuint, level::GLint, pname::GLenum, params::Ptr{GLfloat})::Void
+@gl_function glGetTextureLevelParameteriv(texture::GLuint, level::GLint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetTextureParameterIiv(texture::GLuint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetTextureParameterIuiv(texture::GLuint, pname::GLenum, params::Ptr{GLuint})::Void
+@gl_function glGetTextureParameterfv(texture::GLuint, pname::GLenum, params::Ptr{GLfloat})::Void
+@gl_function glGetTextureParameteriv(texture::GLuint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetTextureSubImage(texture::GLuint, level::GLint, xoffset::GLint, yoffset::GLint, zoffset::GLint, width::GLsizei, height::GLsizei, depth::GLsizei, format::GLenum, type_::GLenum, bufSize::GLsizei, pixels::Ptr{Void})::Void
+@gl_function glGetTransformFeedbackVarying(program::GLuint, index::GLuint, bufSize::GLsizei, length::Ptr{GLsizei}, size::Ptr{GLsizei}, type_::Ptr{GLenum}, name::Ptr{GLchar})::Void
+@gl_function glGetTransformFeedbacki64_v(xfb::GLuint, pname::GLenum, index::GLuint, param::Ptr{GLint64})::Void
+@gl_function glGetTransformFeedbacki_v(xfb::GLuint, pname::GLenum, index::GLuint, param::Ptr{GLint})::Void
+@gl_function glGetTransformFeedbackiv(xfb::GLuint, pname::GLenum, param::Ptr{GLint})::Void
+@gl_function glGetUniformBlockIndex(program::GLuint, uniformBlockName::Ptr{GLchar})::GLuint
+@gl_function glGetUniformIndices(program::GLuint, uniformCount::GLsizei, uniformNames::Ptr{Ptr{GLchar}}, uniformIndices::Ptr{GLuint})::Void
+@gl_function glGetUniformLocation(program::GLuint, name::Ptr{GLchar})::GLint
+@gl_function glGetUniformSubroutineuiv(shadertype::GLenum, location::GLint, params::Ptr{GLuint})::Void
+@gl_function glGetUniformdv(program::GLuint, location::GLint, params::Ptr{GLdouble})::Void
+@gl_function glGetUniformfv(program::GLuint, location::GLint, params::Ptr{GLfloat})::Void
+@gl_function glGetUniformiv(program::GLuint, location::GLint, params::Ptr{GLint})::Void
+@gl_function glGetUniformuiv(program::GLuint, location::GLint, params::Ptr{GLuint})::Void
+@gl_function glGetVertexArrayIndexed64iv(vaobj::GLuint, index::GLuint, pname::GLenum, param::Ptr{GLint64})::Void
+@gl_function glGetVertexArrayIndexediv(vaobj::GLuint, index::GLuint, pname::GLenum, param::Ptr{GLint})::Void
+@gl_function glGetVertexArrayiv(vaobj::GLuint, pname::GLenum, param::Ptr{GLint})::Void
+@gl_function glGetVertexAttribIiv(index::GLuint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetVertexAttribIuiv(index::GLuint, pname::GLenum, params::Ptr{GLuint})::Void
+@gl_function glGetVertexAttribLdv(index::GLuint, pname::GLenum, params::Ptr{GLdouble})::Void
+@gl_function glGetVertexAttribPointerv(index::GLuint, pname::GLenum, pointer::Ptr{Ptr{Void}})::Void
+@gl_function glGetVertexAttribdv(index::GLuint, pname::GLenum, params::Ptr{GLdouble})::Void
+@gl_function glGetVertexAttribfv(index::GLuint, pname::GLenum, params::Ptr{GLfloat})::Void
+@gl_function glGetVertexAttribiv(index::GLuint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glGetnColorTable(target::GLenum, format::GLenum, type_::GLenum, bufSize::GLsizei, table::Ptr{Void})::Void
+@gl_function glGetnCompressedTexImage(target::GLenum, lod::GLint, bufSize::GLsizei, pixels::Ptr{Void})::Void
+@gl_function glGetnConvolutionFilter(target::GLenum, format::GLenum, type_::GLenum, bufSize::GLsizei, image::Ptr{Void})::Void
+@gl_function glGetnHistogram(target::GLenum, reset::GLboolean, format::GLenum, type_::GLenum, bufSize::GLsizei, values::Ptr{Void})::Void
+@gl_function glGetnMapdv(target::GLenum, query::GLenum, bufSize::GLsizei, v::Ptr{GLdouble})::Void
+@gl_function glGetnMapfv(target::GLenum, query::GLenum, bufSize::GLsizei, v::Ptr{GLfloat})::Void
+@gl_function glGetnMapiv(target::GLenum, query::GLenum, bufSize::GLsizei, v::Ptr{GLint})::Void
+@gl_function glGetnMinmax(target::GLenum, reset::GLboolean, format::GLenum, type_::GLenum, bufSize::GLsizei, values::Ptr{Void})::Void
+@gl_function glGetnPixelMapfv(map::GLenum, bufSize::GLsizei, values::Ptr{GLfloat})::Void
+@gl_function glGetnPixelMapuiv(map::GLenum, bufSize::GLsizei, values::Ptr{GLuint})::Void
+@gl_function glGetnPixelMapusv(map::GLenum, bufSize::GLsizei, values::Ptr{GLushort})::Void
+@gl_function glGetnPolygonStipple(bufSize::GLsizei, pattern::Ptr{GLubyte})::Void
+@gl_function glGetnSeparableFilter(target::GLenum, format::GLenum, type_::GLenum, rowBufSize::GLsizei, row::Ptr{Void}, columnBufSize::GLsizei, column::Ptr{Void}, span::Ptr{Void})::Void
+@gl_function glGetnTexImage(target::GLenum, level::GLint, format::GLenum, type_::GLenum, bufSize::GLsizei, pixels::Ptr{Void})::Void
+@gl_function glGetnUniformdv(program::GLuint, location::GLint, bufSize::GLsizei, params::Ptr{GLdouble})::Void
+@gl_function glGetnUniformfv(program::GLuint, location::GLint, bufSize::GLsizei, params::Ptr{GLfloat})::Void
+@gl_function glGetnUniformiv(program::GLuint, location::GLint, bufSize::GLsizei, params::Ptr{GLint})::Void
+@gl_function glGetnUniformuiv(program::GLuint, location::GLint, bufSize::GLsizei, params::Ptr{GLuint})::Void
+@gl_function glHint(target::GLenum, mode::GLenum)::Void
+@gl_function glInvalidateBufferData(buffer::GLuint)::Void
+@gl_function glInvalidateBufferSubData(buffer::GLuint, offset::GLintptr, length::GLsizeiptr)::Void
+@gl_function glInvalidateFramebuffer(target::GLenum, numAttachments::GLsizei, attachments::Ptr{GLenum})::Void
+@gl_function glInvalidateNamedFramebufferData(framebuffer::GLuint, numAttachments::GLsizei, attachments::Ptr{GLenum})::Void
+@gl_function glInvalidateNamedFramebufferSubData(framebuffer::GLuint, numAttachments::GLsizei, attachments::Ptr{GLenum}, x::GLint, y::GLint, width::GLsizei, height::GLsizei)::Void
+@gl_function glInvalidateSubFramebuffer(target::GLenum, numAttachments::GLsizei, attachments::Ptr{GLenum}, x::GLint, y::GLint, width::GLsizei, height::GLsizei)::Void
+@gl_function glInvalidateTexImage(texture::GLuint, level::GLint)::Void
+@gl_function glInvalidateTexSubImage(texture::GLuint, level::GLint, xoffset::GLint, yoffset::GLint, zoffset::GLint, width::GLsizei, height::GLsizei, depth::GLsizei)::Void
+@gl_function glIsBuffer(buffer::GLuint)::GLboolean
+@gl_function glIsEnabled(cap::GLenum)::GLboolean
+@gl_function glIsEnabledi(target::GLenum, index::GLuint)::GLboolean
+@gl_function glIsFramebuffer(framebuffer::GLuint)::GLboolean
+@gl_function glIsProgram(program::GLuint)::GLboolean
+@gl_function glIsProgramPipeline(pipeline::GLuint)::GLboolean
+@gl_function glIsQuery(id::GLuint)::GLboolean
+@gl_function glIsRenderbuffer(renderbuffer::GLuint)::GLboolean
+@gl_function glIsSampler(sampler::GLuint)::GLboolean
+@gl_function glIsShader(shader::GLuint)::GLboolean
+@gl_function glIsSync(sync::GLsync)::GLboolean
+@gl_function glIsTexture(texture::GLuint)::GLboolean
+@gl_function glIsTransformFeedback(id::GLuint)::GLboolean
+@gl_function glIsVertexArray(array::GLuint)::GLboolean
+@gl_function glLineWidth(width::GLfloat)::Void
+@gl_function glLinkProgram(program::GLuint)::Void
+@gl_function glLogicOp(opcode::GLenum)::Void
+@gl_function glMapBuffer(target::GLenum, access::GLenum)::Ptr{Void}
+@gl_function glMapBufferRange(target::GLenum, offset::GLintptr, length::GLsizeiptr, access::GLbitfield)::Ptr{Void}
+@gl_function glMapNamedBuffer(buffer::GLuint, access::GLenum)::Ptr{Void}
+@gl_function glMapNamedBufferRange(buffer::GLuint, offset::GLintptr, length::GLsizeiptr, access::GLbitfield)::Ptr{Void}
+@gl_function glMemoryBarrier(barriers::GLbitfield)::Void
+@gl_function glMemoryBarrierByRegion(barriers::GLbitfield)::Void
+@gl_function glMinSampleShading(value::GLfloat)::Void
+@gl_function glMultiDrawArrays(mode::GLenum, first::Ptr{GLint}, count::Ptr{GLsizei}, drawcount::GLsizei)::Void
+@gl_function glMultiDrawArraysIndirect(mode::GLenum, indirect::Ptr{Void}, drawcount::GLsizei, stride::GLsizei)::Void
+@gl_function glMultiDrawElements(mode::GLenum, count::Ptr{GLsizei}, type_::GLenum, indices::Ptr{Ptr{Void}}, drawcount::GLsizei)::Void
+@gl_function glMultiDrawElementsBaseVertex(mode::GLenum, count::Ptr{GLsizei}, type_::GLenum, indices::Ptr{Ptr{Void}}, drawcount::GLsizei, basevertex::Ptr{GLint})::Void
+@gl_function glMultiDrawElementsIndirect(mode::GLenum, type_::GLenum, indirect::Ptr{Void}, drawcount::GLsizei, stride::GLsizei)::Void
+@gl_function glMultiTexCoordP1ui(texture::GLenum, type_::GLenum, coords::GLuint)::Void
+@gl_function glMultiTexCoordP1uiv(texture::GLenum, type_::GLenum, coords::Ptr{GLuint})::Void
+@gl_function glMultiTexCoordP2ui(texture::GLenum, type_::GLenum, coords::GLuint)::Void
+@gl_function glMultiTexCoordP2uiv(texture::GLenum, type_::GLenum, coords::Ptr{GLuint})::Void
+@gl_function glMultiTexCoordP3ui(texture::GLenum, type_::GLenum, coords::GLuint)::Void
+@gl_function glMultiTexCoordP3uiv(texture::GLenum, type_::GLenum, coords::Ptr{GLuint})::Void
+@gl_function glMultiTexCoordP4ui(texture::GLenum, type_::GLenum, coords::GLuint)::Void
+@gl_function glMultiTexCoordP4uiv(texture::GLenum, type_::GLenum, coords::Ptr{GLuint})::Void
+@gl_function glNamedBufferData(buffer::GLuint, size::GLsizeiptr, data::Ptr{Void}, usage::GLenum)::Void
+@gl_function glNamedBufferStorage(buffer::GLuint, size::GLsizeiptr, data::Ptr{Void}, flags::GLbitfield)::Void
+@gl_function glNamedBufferSubData(buffer::GLuint, offset::GLintptr, size::GLsizeiptr, data::Ptr{Void})::Void
+@gl_function glNamedFramebufferDrawBuffer(framebuffer::GLuint, buf::GLenum)::Void
+@gl_function glNamedFramebufferDrawBuffers(framebuffer::GLuint, n::GLsizei, bufs::Ptr{GLenum})::Void
+@gl_function glNamedFramebufferParameteri(framebuffer::GLuint, pname::GLenum, param::GLint)::Void
+@gl_function glNamedFramebufferReadBuffer(framebuffer::GLuint, src::GLenum)::Void
+@gl_function glNamedFramebufferRenderbuffer(framebuffer::GLuint, attachment::GLenum, renderbuffertarget::GLenum, renderbuffer::GLuint)::Void
+@gl_function glNamedFramebufferTexture(framebuffer::GLuint, attachment::GLenum, texture::GLuint, level::GLint)::Void
+@gl_function glNamedFramebufferTextureLayer(framebuffer::GLuint, attachment::GLenum, texture::GLuint, level::GLint, layer::GLint)::Void
+@gl_function glNamedRenderbufferStorage(renderbuffer::GLuint, internalformat::GLenum, width::GLsizei, height::GLsizei)::Void
+@gl_function glNamedRenderbufferStorageMultisample(renderbuffer::GLuint, samples::GLsizei, internalformat::GLenum, width::GLsizei, height::GLsizei)::Void
+@gl_function glNormalP3ui(type_::GLenum, coords::GLuint)::Void
+@gl_function glNormalP3uiv(type_::GLenum, coords::Ptr{GLuint})::Void
+@gl_function glObjectLabel(identifier::GLenum, name::GLuint, length::GLsizei, label::Ptr{GLchar})::Void
+@gl_function glObjectPtrLabel(ptr::Ptr{Void}, length::GLsizei, label::Ptr{GLchar})::Void
+@gl_function glPatchParameterfv(pname::GLenum, values::Ptr{GLfloat})::Void
+@gl_function glPatchParameteri(pname::GLenum, value::GLint)::Void
+@gl_function glPauseTransformFeedback()::Void
+@gl_function glPixelStoref(pname::GLenum, param::GLfloat)::Void
+@gl_function glPixelStorei(pname::GLenum, param::GLint)::Void
+@gl_function glPointParameterf(pname::GLenum, param::GLfloat)::Void
+@gl_function glPointParameterfv(pname::GLenum, params::Ptr{GLfloat})::Void
+@gl_function glPointParameteri(pname::GLenum, param::GLint)::Void
+@gl_function glPointParameteriv(pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glPointSize(size::GLfloat)::Void
+@gl_function glPolygonMode(face::GLenum, mode::GLenum)::Void
+@gl_function glPolygonOffset(factor::GLfloat, units::GLfloat)::Void
+@gl_function glPopDebugGroup()::Void
+@gl_function glPrimitiveRestartIndex(index::GLuint)::Void
+@gl_function glProgramBinary(program::GLuint, binaryFormat::GLenum, binary::Ptr{Void}, length::GLsizei)::Void
+@gl_function glProgramParameteri(program::GLuint, pname::GLenum, value::GLint)::Void
+@gl_function glProgramUniform1d(program::GLuint, location::GLint, v0::GLdouble)::Void
+@gl_function glProgramUniform1dv(program::GLuint, location::GLint, count::GLsizei, value::Ptr{GLdouble})::Void
+@gl_function glProgramUniform1f(program::GLuint, location::GLint, v0::GLfloat)::Void
+@gl_function glProgramUniform1fv(program::GLuint, location::GLint, count::GLsizei, value::Ptr{GLfloat})::Void
+@gl_function glProgramUniform1i(program::GLuint, location::GLint, v0::GLint)::Void
+@gl_function glProgramUniform1iv(program::GLuint, location::GLint, count::GLsizei, value::Ptr{GLint})::Void
+@gl_function glProgramUniform1ui(program::GLuint, location::GLint, v0::GLuint)::Void
+@gl_function glProgramUniform1uiv(program::GLuint, location::GLint, count::GLsizei, value::Ptr{GLuint})::Void
+@gl_function glProgramUniform2d(program::GLuint, location::GLint, v0::GLdouble, v1::GLdouble)::Void
+@gl_function glProgramUniform2dv(program::GLuint, location::GLint, count::GLsizei, value::Ptr{GLdouble})::Void
+@gl_function glProgramUniform2f(program::GLuint, location::GLint, v0::GLfloat, v1::GLfloat)::Void
+@gl_function glProgramUniform2fv(program::GLuint, location::GLint, count::GLsizei, value::Ptr{GLfloat})::Void
+@gl_function glProgramUniform2i(program::GLuint, location::GLint, v0::GLint, v1::GLint)::Void
+@gl_function glProgramUniform2iv(program::GLuint, location::GLint, count::GLsizei, value::Ptr{GLint})::Void
+@gl_function glProgramUniform2ui(program::GLuint, location::GLint, v0::GLuint, v1::GLuint)::Void
+@gl_function glProgramUniform2uiv(program::GLuint, location::GLint, count::GLsizei, value::Ptr{GLuint})::Void
+@gl_function glProgramUniform3d(program::GLuint, location::GLint, v0::GLdouble, v1::GLdouble, v2::GLdouble)::Void
+@gl_function glProgramUniform3dv(program::GLuint, location::GLint, count::GLsizei, value::Ptr{GLdouble})::Void
+@gl_function glProgramUniform3f(program::GLuint, location::GLint, v0::GLfloat, v1::GLfloat, v2::GLfloat)::Void
+@gl_function glProgramUniform3fv(program::GLuint, location::GLint, count::GLsizei, value::Ptr{GLfloat})::Void
+@gl_function glProgramUniform3i(program::GLuint, location::GLint, v0::GLint, v1::GLint, v2::GLint)::Void
+@gl_function glProgramUniform3iv(program::GLuint, location::GLint, count::GLsizei, value::Ptr{GLint})::Void
+@gl_function glProgramUniform3ui(program::GLuint, location::GLint, v0::GLuint, v1::GLuint, v2::GLuint)::Void
+@gl_function glProgramUniform3uiv(program::GLuint, location::GLint, count::GLsizei, value::Ptr{GLuint})::Void
+@gl_function glProgramUniform4d(program::GLuint, location::GLint, v0::GLdouble, v1::GLdouble, v2::GLdouble, v3::GLdouble)::Void
+@gl_function glProgramUniform4dv(program::GLuint, location::GLint, count::GLsizei, value::Ptr{GLdouble})::Void
+@gl_function glProgramUniform4f(program::GLuint, location::GLint, v0::GLfloat, v1::GLfloat, v2::GLfloat, v3::GLfloat)::Void
+@gl_function glProgramUniform4fv(program::GLuint, location::GLint, count::GLsizei, value::Ptr{GLfloat})::Void
+@gl_function glProgramUniform4i(program::GLuint, location::GLint, v0::GLint, v1::GLint, v2::GLint, v3::GLint)::Void
+@gl_function glProgramUniform4iv(program::GLuint, location::GLint, count::GLsizei, value::Ptr{GLint})::Void
+@gl_function glProgramUniform4ui(program::GLuint, location::GLint, v0::GLuint, v1::GLuint, v2::GLuint, v3::GLuint)::Void
+@gl_function glProgramUniform4uiv(program::GLuint, location::GLint, count::GLsizei, value::Ptr{GLuint})::Void
+@gl_function glProgramUniformMatrix2dv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glProgramUniformMatrix2fv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glProgramUniformMatrix2x3dv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glProgramUniformMatrix2x3fv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glProgramUniformMatrix2x4dv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glProgramUniformMatrix2x4fv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glProgramUniformMatrix3dv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glProgramUniformMatrix3fv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glProgramUniformMatrix3x2dv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glProgramUniformMatrix3x2fv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glProgramUniformMatrix3x4dv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glProgramUniformMatrix3x4fv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glProgramUniformMatrix4dv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glProgramUniformMatrix4fv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glProgramUniformMatrix4x2dv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glProgramUniformMatrix4x2fv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glProgramUniformMatrix4x3dv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glProgramUniformMatrix4x3fv(program::GLuint, location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glProvokingVertex(mode::GLenum)::Void
+@gl_function glPushDebugGroup(source::GLenum, id::GLuint, length::GLsizei, message::Ptr{GLchar})::Void
+@gl_function glQueryCounter(id::GLuint, target::GLenum)::Void
+@gl_function glReadBuffer(src::GLenum)::Void
+@gl_function glReadPixels(x::GLint, y::GLint, width::GLsizei, height::GLsizei, format::GLenum, type_::GLenum, pixels::Ptr{Void})::Void
+@gl_function glReadnPixels(x::GLint, y::GLint, width::GLsizei, height::GLsizei, format::GLenum, type_::GLenum, bufSize::GLsizei, data::Ptr{Void})::Void
+@gl_function glReleaseShaderCompiler()::Void
+@gl_function glRenderbufferStorage(target::GLenum, internalformat::GLenum, width::GLsizei, height::GLsizei)::Void
+@gl_function glRenderbufferStorageMultisample(target::GLenum, samples::GLsizei, internalformat::GLenum, width::GLsizei, height::GLsizei)::Void
+@gl_function glResumeTransformFeedback()::Void
+@gl_function glSampleCoverage(value::GLfloat, invert::GLboolean)::Void
+@gl_function glSampleMaski(maskNumber::GLuint, mask::GLbitfield)::Void
+@gl_function glSamplerParameterIiv(sampler::GLuint, pname::GLenum, param::Ptr{GLint})::Void
+@gl_function glSamplerParameterIuiv(sampler::GLuint, pname::GLenum, param::Ptr{GLuint})::Void
+@gl_function glSamplerParameterf(sampler::GLuint, pname::GLenum, param::GLfloat)::Void
+@gl_function glSamplerParameterfv(sampler::GLuint, pname::GLenum, param::Ptr{GLfloat})::Void
+@gl_function glSamplerParameteri(sampler::GLuint, pname::GLenum, param::GLint)::Void
+@gl_function glSamplerParameteriv(sampler::GLuint, pname::GLenum, param::Ptr{GLint})::Void
+@gl_function glScissor(x::GLint, y::GLint, width::GLsizei, height::GLsizei)::Void
+@gl_function glScissorArrayv(first::GLuint, count::GLsizei, v::Ptr{GLint})::Void
+@gl_function glScissorIndexed(index::GLuint, left::GLint, bottom::GLint, width::GLsizei, height::GLsizei)::Void
+@gl_function glScissorIndexedv(index::GLuint, v::Ptr{GLint})::Void
+@gl_function glSecondaryColorP3ui(type_::GLenum, color::GLuint)::Void
+@gl_function glSecondaryColorP3uiv(type_::GLenum, color::Ptr{GLuint})::Void
+@gl_function glShaderBinary(count::GLsizei, shaders::Ptr{GLuint}, binaryformat::GLenum, binary::Ptr{Void}, length::GLsizei)::Void
+@gl_function glShaderSource(shader::GLuint, count::GLsizei, string::Ptr{Ptr{GLchar}}, length::Ptr{GLint})::Void
+@gl_function glShaderStorageBlockBinding(program::GLuint, storageBlockIndex::GLuint, storageBlockBinding::GLuint)::Void
+@gl_function glStencilFunc(func::GLenum, ref::GLint, mask::GLuint)::Void
+@gl_function glStencilFuncSeparate(face::GLenum, func::GLenum, ref::GLint, mask::GLuint)::Void
+@gl_function glStencilMask(mask::GLuint)::Void
+@gl_function glStencilMaskSeparate(face::GLenum, mask::GLuint)::Void
+@gl_function glStencilOp(fail::GLenum, zfail::GLenum, zpass::GLenum)::Void
+@gl_function glStencilOpSeparate(face::GLenum, sfail::GLenum, dpfail::GLenum, dppass::GLenum)::Void
+@gl_function glTexBuffer(target::GLenum, internalformat::GLenum, buffer::GLuint)::Void
+@gl_function glTexBufferRange(target::GLenum, internalformat::GLenum, buffer::GLuint, offset::GLintptr, size::GLsizeiptr)::Void
+@gl_function glTexCoordP1ui(type_::GLenum, coords::GLuint)::Void
+@gl_function glTexCoordP1uiv(type_::GLenum, coords::Ptr{GLuint})::Void
+@gl_function glTexCoordP2ui(type_::GLenum, coords::GLuint)::Void
+@gl_function glTexCoordP2uiv(type_::GLenum, coords::Ptr{GLuint})::Void
+@gl_function glTexCoordP3ui(type_::GLenum, coords::GLuint)::Void
+@gl_function glTexCoordP3uiv(type_::GLenum, coords::Ptr{GLuint})::Void
+@gl_function glTexCoordP4ui(type_::GLenum, coords::GLuint)::Void
+@gl_function glTexCoordP4uiv(type_::GLenum, coords::Ptr{GLuint})::Void
+@gl_function glTexImage1D(target::GLenum, level::GLint, internalformat::GLint, width::GLsizei, border::GLint, format::GLenum, type_::GLenum, pixels::Ptr{Void})::Void
+@gl_function glTexImage2D(target::GLenum, level::GLint, internalformat::GLint, width::GLsizei, height::GLsizei, border::GLint, format::GLenum, type_::GLenum, pixels::Ptr{Void})::Void
+@gl_function glTexImage2DMultisample(target::GLenum, samples::GLsizei, internalformat::GLenum, width::GLsizei, height::GLsizei, fixedsamplelocations::GLboolean)::Void
+@gl_function glTexImage3D(target::GLenum, level::GLint, internalformat::GLint, width::GLsizei, height::GLsizei, depth::GLsizei, border::GLint, format::GLenum, type_::GLenum, pixels::Ptr{Void})::Void
+@gl_function glTexImage3DMultisample(target::GLenum, samples::GLsizei, internalformat::GLenum, width::GLsizei, height::GLsizei, depth::GLsizei, fixedsamplelocations::GLboolean)::Void
+@gl_function glTexParameterIiv(target::GLenum, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glTexParameterIuiv(target::GLenum, pname::GLenum, params::Ptr{GLuint})::Void
+@gl_function glTexParameterf(target::GLenum, pname::GLenum, param::GLfloat)::Void
+@gl_function glTexParameterfv(target::GLenum, pname::GLenum, params::Ptr{GLfloat})::Void
+@gl_function glTexParameteri(target::GLenum, pname::GLenum, param::GLint)::Void
+@gl_function glTexParameteriv(target::GLenum, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glTexStorage1D(target::GLenum, levels::GLsizei, internalformat::GLenum, width::GLsizei)::Void
+@gl_function glTexStorage2D(target::GLenum, levels::GLsizei, internalformat::GLenum, width::GLsizei, height::GLsizei)::Void
+@gl_function glTexStorage2DMultisample(target::GLenum, samples::GLsizei, internalformat::GLenum, width::GLsizei, height::GLsizei, fixedsamplelocations::GLboolean)::Void
+@gl_function glTexStorage3D(target::GLenum, levels::GLsizei, internalformat::GLenum, width::GLsizei, height::GLsizei, depth::GLsizei)::Void
+@gl_function glTexStorage3DMultisample(target::GLenum, samples::GLsizei, internalformat::GLenum, width::GLsizei, height::GLsizei, depth::GLsizei, fixedsamplelocations::GLboolean)::Void
+@gl_function glTexSubImage1D(target::GLenum, level::GLint, xoffset::GLint, width::GLsizei, format::GLenum, type_::GLenum, pixels::Ptr{Void})::Void
+@gl_function glTexSubImage2D(target::GLenum, level::GLint, xoffset::GLint, yoffset::GLint, width::GLsizei, height::GLsizei, format::GLenum, type_::GLenum, pixels::Ptr{Void})::Void
+@gl_function glTexSubImage3D(target::GLenum, level::GLint, xoffset::GLint, yoffset::GLint, zoffset::GLint, width::GLsizei, height::GLsizei, depth::GLsizei, format::GLenum, type_::GLenum, pixels::Ptr{Void})::Void
+@gl_function glTextureBarrier()::Void
+@gl_function glTextureBuffer(texture::GLuint, internalformat::GLenum, buffer::GLuint)::Void
+@gl_function glTextureBufferRange(texture::GLuint, internalformat::GLenum, buffer::GLuint, offset::GLintptr, size::GLsizeiptr)::Void
+@gl_function glTextureParameterIiv(texture::GLuint, pname::GLenum, params::Ptr{GLint})::Void
+@gl_function glTextureParameterIuiv(texture::GLuint, pname::GLenum, params::Ptr{GLuint})::Void
+@gl_function glTextureParameterf(texture::GLuint, pname::GLenum, param::GLfloat)::Void
+@gl_function glTextureParameterfv(texture::GLuint, pname::GLenum, param::Ptr{GLfloat})::Void
+@gl_function glTextureParameteri(texture::GLuint, pname::GLenum, param::GLint)::Void
+@gl_function glTextureParameteriv(texture::GLuint, pname::GLenum, param::Ptr{GLint})::Void
+@gl_function glTextureStorage1D(texture::GLuint, levels::GLsizei, internalformat::GLenum, width::GLsizei)::Void
+@gl_function glTextureStorage2D(texture::GLuint, levels::GLsizei, internalformat::GLenum, width::GLsizei, height::GLsizei)::Void
+@gl_function glTextureStorage2DMultisample(texture::GLuint, samples::GLsizei, internalformat::GLenum, width::GLsizei, height::GLsizei, fixedsamplelocations::GLboolean)::Void
+@gl_function glTextureStorage3D(texture::GLuint, levels::GLsizei, internalformat::GLenum, width::GLsizei, height::GLsizei, depth::GLsizei)::Void
+@gl_function glTextureStorage3DMultisample(texture::GLuint, samples::GLsizei, internalformat::GLenum, width::GLsizei, height::GLsizei, depth::GLsizei, fixedsamplelocations::GLboolean)::Void
+@gl_function glTextureSubImage1D(texture::GLuint, level::GLint, xoffset::GLint, width::GLsizei, format::GLenum, type_::GLenum, pixels::Ptr{Void})::Void
+@gl_function glTextureSubImage2D(texture::GLuint, level::GLint, xoffset::GLint, yoffset::GLint, width::GLsizei, height::GLsizei, format::GLenum, type_::GLenum, pixels::Ptr{Void})::Void
+@gl_function glTextureSubImage3D(texture::GLuint, level::GLint, xoffset::GLint, yoffset::GLint, zoffset::GLint, width::GLsizei, height::GLsizei, depth::GLsizei, format::GLenum, type_::GLenum, pixels::Ptr{Void})::Void
+@gl_function glTextureView(texture::GLuint, target::GLenum, origtexture::GLuint, internalformat::GLenum, minlevel::GLuint, numlevels::GLuint, minlayer::GLuint, numlayers::GLuint)::Void
+@gl_function glTransformFeedbackBufferBase(xfb::GLuint, index::GLuint, buffer::GLuint)::Void
+@gl_function glTransformFeedbackBufferRange(xfb::GLuint, index::GLuint, buffer::GLuint, offset::GLintptr, size::GLsizeiptr)::Void
+@gl_function glTransformFeedbackVaryings(program::GLuint, count::GLsizei, varyings::Ptr{Ptr{GLchar}}, bufferMode::GLenum)::Void
+@gl_function glUniform1d(location::GLint, x::GLdouble)::Void
+@gl_function glUniform1dv(location::GLint, count::GLsizei, value::Ptr{GLdouble})::Void
+@gl_function glUniform1f(location::GLint, v0::GLfloat)::Void
+@gl_function glUniform1fv(location::GLint, count::GLsizei, value::Ptr{GLfloat})::Void
+@gl_function glUniform1i(location::GLint, v0::GLint)::Void
+@gl_function glUniform1iv(location::GLint, count::GLsizei, value::Ptr{GLint})::Void
+@gl_function glUniform1ui(location::GLint, v0::GLuint)::Void
+@gl_function glUniform1uiv(location::GLint, count::GLsizei, value::Ptr{GLuint})::Void
+@gl_function glUniform2d(location::GLint, x::GLdouble, y::GLdouble)::Void
+@gl_function glUniform2dv(location::GLint, count::GLsizei, value::Ptr{GLdouble})::Void
+@gl_function glUniform2f(location::GLint, v0::GLfloat, v1::GLfloat)::Void
+@gl_function glUniform2fv(location::GLint, count::GLsizei, value::Ptr{GLfloat})::Void
+@gl_function glUniform2i(location::GLint, v0::GLint, v1::GLint)::Void
+@gl_function glUniform2iv(location::GLint, count::GLsizei, value::Ptr{GLint})::Void
+@gl_function glUniform2ui(location::GLint, v0::GLuint, v1::GLuint)::Void
+@gl_function glUniform2uiv(location::GLint, count::GLsizei, value::Ptr{GLuint})::Void
+@gl_function glUniform3d(location::GLint, x::GLdouble, y::GLdouble, z::GLdouble)::Void
+@gl_function glUniform3dv(location::GLint, count::GLsizei, value::Ptr{GLdouble})::Void
+@gl_function glUniform3f(location::GLint, v0::GLfloat, v1::GLfloat, v2::GLfloat)::Void
+@gl_function glUniform3fv(location::GLint, count::GLsizei, value::Ptr{GLfloat})::Void
+@gl_function glUniform3i(location::GLint, v0::GLint, v1::GLint, v2::GLint)::Void
+@gl_function glUniform3iv(location::GLint, count::GLsizei, value::Ptr{GLint})::Void
+@gl_function glUniform3ui(location::GLint, v0::GLuint, v1::GLuint, v2::GLuint)::Void
+@gl_function glUniform3uiv(location::GLint, count::GLsizei, value::Ptr{GLuint})::Void
+@gl_function glUniform4d(location::GLint, x::GLdouble, y::GLdouble, z::GLdouble, w::GLdouble)::Void
+@gl_function glUniform4dv(location::GLint, count::GLsizei, value::Ptr{GLdouble})::Void
+@gl_function glUniform4f(location::GLint, v0::GLfloat, v1::GLfloat, v2::GLfloat, v3::GLfloat)::Void
+@gl_function glUniform4fv(location::GLint, count::GLsizei, value::Ptr{GLfloat})::Void
+@gl_function glUniform4i(location::GLint, v0::GLint, v1::GLint, v2::GLint, v3::GLint)::Void
+@gl_function glUniform4iv(location::GLint, count::GLsizei, value::Ptr{GLint})::Void
+@gl_function glUniform4ui(location::GLint, v0::GLuint, v1::GLuint, v2::GLuint, v3::GLuint)::Void
+@gl_function glUniform4uiv(location::GLint, count::GLsizei, value::Ptr{GLuint})::Void
+@gl_function glUniformBlockBinding(program::GLuint, uniformBlockIndex::GLuint, uniformBlockBinding::GLuint)::Void
+@gl_function glUniformMatrix2dv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glUniformMatrix2fv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glUniformMatrix2x3dv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glUniformMatrix2x3fv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glUniformMatrix2x4dv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glUniformMatrix2x4fv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glUniformMatrix3dv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glUniformMatrix3fv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glUniformMatrix3x2dv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glUniformMatrix3x2fv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glUniformMatrix3x4dv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glUniformMatrix3x4fv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glUniformMatrix4dv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glUniformMatrix4fv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glUniformMatrix4x2dv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glUniformMatrix4x2fv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glUniformMatrix4x3dv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLdouble})::Void
+@gl_function glUniformMatrix4x3fv(location::GLint, count::GLsizei, transpose::GLboolean, value::Ptr{GLfloat})::Void
+@gl_function glUniformSubroutinesuiv(shadertype::GLenum, count::GLsizei, indices::Ptr{GLuint})::Void
+@gl_function glUnmapBuffer(target::GLenum)::GLboolean
+@gl_function glUnmapNamedBuffer(buffer::GLuint)::GLboolean
+@gl_function glUseProgram(program::GLuint)::Void
+@gl_function glUseProgramStages(pipeline::GLuint, stages::GLbitfield, program::GLuint)::Void
+@gl_function glValidateProgram(program::GLuint)::Void
+@gl_function glValidateProgramPipeline(pipeline::GLuint)::Void
+@gl_function glVertexArrayAttribBinding(vaobj::GLuint, attribindex::GLuint, bindingindex::GLuint)::Void
+@gl_function glVertexArrayAttribFormat(vaobj::GLuint, attribindex::GLuint, size::GLint, type_::GLenum, normalized::GLboolean, relativeoffset::GLuint)::Void
+@gl_function glVertexArrayAttribIFormat(vaobj::GLuint, attribindex::GLuint, size::GLint, type_::GLenum, relativeoffset::GLuint)::Void
+@gl_function glVertexArrayAttribLFormat(vaobj::GLuint, attribindex::GLuint, size::GLint, type_::GLenum, relativeoffset::GLuint)::Void
+@gl_function glVertexArrayBindingDivisor(vaobj::GLuint, bindingindex::GLuint, divisor::GLuint)::Void
+@gl_function glVertexArrayElementBuffer(vaobj::GLuint, buffer::GLuint)::Void
+@gl_function glVertexArrayVertexBuffer(vaobj::GLuint, bindingindex::GLuint, buffer::GLuint, offset::GLintptr, stride::GLsizei)::Void
+@gl_function glVertexArrayVertexBuffers(vaobj::GLuint, first::GLuint, count::GLsizei, buffers::Ptr{GLuint}, offsets::Ptr{GLintptr}, strides::Ptr{GLsizei})::Void
+@gl_function glVertexAttrib1d(index::GLuint, x::GLdouble)::Void
+@gl_function glVertexAttrib1dv(index::GLuint, v::Ptr{GLdouble})::Void
+@gl_function glVertexAttrib1f(index::GLuint, x::GLfloat)::Void
+@gl_function glVertexAttrib1fv(index::GLuint, v::Ptr{GLfloat})::Void
+@gl_function glVertexAttrib1s(index::GLuint, x::GLshort)::Void
+@gl_function glVertexAttrib1sv(index::GLuint, v::Ptr{GLshort})::Void
+@gl_function glVertexAttrib2d(index::GLuint, x::GLdouble, y::GLdouble)::Void
+@gl_function glVertexAttrib2dv(index::GLuint, v::Ptr{GLdouble})::Void
+@gl_function glVertexAttrib2f(index::GLuint, x::GLfloat, y::GLfloat)::Void
+@gl_function glVertexAttrib2fv(index::GLuint, v::Ptr{GLfloat})::Void
+@gl_function glVertexAttrib2s(index::GLuint, x::GLshort, y::GLshort)::Void
+@gl_function glVertexAttrib2sv(index::GLuint, v::Ptr{GLshort})::Void
+@gl_function glVertexAttrib3d(index::GLuint, x::GLdouble, y::GLdouble, z::GLdouble)::Void
+@gl_function glVertexAttrib3dv(index::GLuint, v::Ptr{GLdouble})::Void
+@gl_function glVertexAttrib3f(index::GLuint, x::GLfloat, y::GLfloat, z::GLfloat)::Void
+@gl_function glVertexAttrib3fv(index::GLuint, v::Ptr{GLfloat})::Void
+@gl_function glVertexAttrib3s(index::GLuint, x::GLshort, y::GLshort, z::GLshort)::Void
+@gl_function glVertexAttrib3sv(index::GLuint, v::Ptr{GLshort})::Void
+@gl_function glVertexAttrib4Nbv(index::GLuint, v::Ptr{GLbyte})::Void
+@gl_function glVertexAttrib4Niv(index::GLuint, v::Ptr{GLint})::Void
+@gl_function glVertexAttrib4Nsv(index::GLuint, v::Ptr{GLshort})::Void
+@gl_function glVertexAttrib4Nub(index::GLuint, x::GLubyte, y::GLubyte, z::GLubyte, w::GLubyte)::Void
+@gl_function glVertexAttrib4Nubv(index::GLuint, v::Ptr{GLubyte})::Void
+@gl_function glVertexAttrib4Nuiv(index::GLuint, v::Ptr{GLuint})::Void
+@gl_function glVertexAttrib4Nusv(index::GLuint, v::Ptr{GLushort})::Void
+@gl_function glVertexAttrib4bv(index::GLuint, v::Ptr{GLbyte})::Void
+@gl_function glVertexAttrib4d(index::GLuint, x::GLdouble, y::GLdouble, z::GLdouble, w::GLdouble)::Void
+@gl_function glVertexAttrib4dv(index::GLuint, v::Ptr{GLdouble})::Void
+@gl_function glVertexAttrib4f(index::GLuint, x::GLfloat, y::GLfloat, z::GLfloat, w::GLfloat)::Void
+@gl_function glVertexAttrib4fv(index::GLuint, v::Ptr{GLfloat})::Void
+@gl_function glVertexAttrib4iv(index::GLuint, v::Ptr{GLint})::Void
+@gl_function glVertexAttrib4s(index::GLuint, x::GLshort, y::GLshort, z::GLshort, w::GLshort)::Void
+@gl_function glVertexAttrib4sv(index::GLuint, v::Ptr{GLshort})::Void
+@gl_function glVertexAttrib4ubv(index::GLuint, v::Ptr{GLubyte})::Void
+@gl_function glVertexAttrib4uiv(index::GLuint, v::Ptr{GLuint})::Void
+@gl_function glVertexAttrib4usv(index::GLuint, v::Ptr{GLushort})::Void
+@gl_function glVertexAttribBinding(attribindex::GLuint, bindingindex::GLuint)::Void
+@gl_function glVertexAttribDivisor(index::GLuint, divisor::GLuint)::Void
+@gl_function glVertexAttribFormat(attribindex::GLuint, size::GLint, type_::GLenum, normalized::GLboolean, relativeoffset::GLuint)::Void
+@gl_function glVertexAttribI1i(index::GLuint, x::GLint)::Void
+@gl_function glVertexAttribI1iv(index::GLuint, v::Ptr{GLint})::Void
+@gl_function glVertexAttribI1ui(index::GLuint, x::GLuint)::Void
+@gl_function glVertexAttribI1uiv(index::GLuint, v::Ptr{GLuint})::Void
+@gl_function glVertexAttribI2i(index::GLuint, x::GLint, y::GLint)::Void
+@gl_function glVertexAttribI2iv(index::GLuint, v::Ptr{GLint})::Void
+@gl_function glVertexAttribI2ui(index::GLuint, x::GLuint, y::GLuint)::Void
+@gl_function glVertexAttribI2uiv(index::GLuint, v::Ptr{GLuint})::Void
+@gl_function glVertexAttribI3i(index::GLuint, x::GLint, y::GLint, z::GLint)::Void
+@gl_function glVertexAttribI3iv(index::GLuint, v::Ptr{GLint})::Void
+@gl_function glVertexAttribI3ui(index::GLuint, x::GLuint, y::GLuint, z::GLuint)::Void
+@gl_function glVertexAttribI3uiv(index::GLuint, v::Ptr{GLuint})::Void
+@gl_function glVertexAttribI4bv(index::GLuint, v::Ptr{GLbyte})::Void
+@gl_function glVertexAttribI4i(index::GLuint, x::GLint, y::GLint, z::GLint, w::GLint)::Void
+@gl_function glVertexAttribI4iv(index::GLuint, v::Ptr{GLint})::Void
+@gl_function glVertexAttribI4sv(index::GLuint, v::Ptr{GLshort})::Void
+@gl_function glVertexAttribI4ubv(index::GLuint, v::Ptr{GLubyte})::Void
+@gl_function glVertexAttribI4ui(index::GLuint, x::GLuint, y::GLuint, z::GLuint, w::GLuint)::Void
+@gl_function glVertexAttribI4uiv(index::GLuint, v::Ptr{GLuint})::Void
+@gl_function glVertexAttribI4usv(index::GLuint, v::Ptr{GLushort})::Void
+@gl_function glVertexAttribIFormat(attribindex::GLuint, size::GLint, type_::GLenum, relativeoffset::GLuint)::Void
+@gl_function glVertexAttribIPointer(index::GLuint, size::GLint, type_::GLenum, stride::GLsizei, pointer::Ptr{Void})::Void
+@gl_function glVertexAttribL1d(index::GLuint, x::GLdouble)::Void
+@gl_function glVertexAttribL1dv(index::GLuint, v::Ptr{GLdouble})::Void
+@gl_function glVertexAttribL2d(index::GLuint, x::GLdouble, y::GLdouble)::Void
+@gl_function glVertexAttribL2dv(index::GLuint, v::Ptr{GLdouble})::Void
+@gl_function glVertexAttribL3d(index::GLuint, x::GLdouble, y::GLdouble, z::GLdouble)::Void
+@gl_function glVertexAttribL3dv(index::GLuint, v::Ptr{GLdouble})::Void
+@gl_function glVertexAttribL4d(index::GLuint, x::GLdouble, y::GLdouble, z::GLdouble, w::GLdouble)::Void
+@gl_function glVertexAttribL4dv(index::GLuint, v::Ptr{GLdouble})::Void
+@gl_function glVertexAttribLFormat(attribindex::GLuint, size::GLint, type_::GLenum, relativeoffset::GLuint)::Void
+@gl_function glVertexAttribLPointer(index::GLuint, size::GLint, type_::GLenum, stride::GLsizei, pointer::Ptr{Void})::Void
+@gl_function glVertexAttribP1ui(index::GLuint, type_::GLenum, normalized::GLboolean, value::GLuint)::Void
+@gl_function glVertexAttribP1uiv(index::GLuint, type_::GLenum, normalized::GLboolean, value::Ptr{GLuint})::Void
+@gl_function glVertexAttribP2ui(index::GLuint, type_::GLenum, normalized::GLboolean, value::GLuint)::Void
+@gl_function glVertexAttribP2uiv(index::GLuint, type_::GLenum, normalized::GLboolean, value::Ptr{GLuint})::Void
+@gl_function glVertexAttribP3ui(index::GLuint, type_::GLenum, normalized::GLboolean, value::GLuint)::Void
+@gl_function glVertexAttribP3uiv(index::GLuint, type_::GLenum, normalized::GLboolean, value::Ptr{GLuint})::Void
+@gl_function glVertexAttribP4ui(index::GLuint, type_::GLenum, normalized::GLboolean, value::GLuint)::Void
+@gl_function glVertexAttribP4uiv(index::GLuint, type_::GLenum, normalized::GLboolean, value::Ptr{GLuint})::Void
+@gl_function glVertexAttribPointer(index::GLuint, size::GLint, type_::GLenum, normalized::GLboolean, stride::GLsizei, pointer::Ptr{Void})::Void
+@gl_function glVertexBindingDivisor(bindingindex::GLuint, divisor::GLuint)::Void
+@gl_function glVertexP2ui(type_::GLenum, value::GLuint)::Void
+@gl_function glVertexP2uiv(type_::GLenum, value::Ptr{GLuint})::Void
+@gl_function glVertexP3ui(type_::GLenum, value::GLuint)::Void
+@gl_function glVertexP3uiv(type_::GLenum, value::Ptr{GLuint})::Void
+@gl_function glVertexP4ui(type_::GLenum, value::GLuint)::Void
+@gl_function glVertexP4uiv(type_::GLenum, value::Ptr{GLuint})::Void
+@gl_function glViewport(x::GLint, y::GLint, width::GLsizei, height::GLsizei)::Void
+@gl_function glViewportArrayv(first::GLuint, count::GLsizei, v::Ptr{GLfloat})::Void
+@gl_function glViewportIndexedf(index::GLuint, x::GLfloat, y::GLfloat, w::GLfloat, h::GLfloat)::Void
+@gl_function glViewportIndexedfv(index::GLuint, v::Ptr{GLfloat})::Void
+@gl_function glWaitSync(sync::GLsync, flags::GLbitfield, timeout::GLuint64)::Void

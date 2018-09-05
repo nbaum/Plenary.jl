@@ -1,0 +1,7 @@
+passes:
+  shadow:
+    - assets/shaders/standard/shadow.frag
+    - assets/shaders/standard/voxel.vert
+  forward:
+    - assets/shaders/standard/default.frag
+    - assets/shaders/standard/voxel.vert

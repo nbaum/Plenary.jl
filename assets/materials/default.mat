@@ -1,0 +1,12 @@
+{
+  "passes": {
+    "shadow": [
+      "assets/shaders/standard/shadow.frag",
+      "assets/shaders/standard/default.vert"
+    ],
+    "forward": [
+      "assets/shaders/standard/pbr.frag",
+      "assets/shaders/standard/default.vert"
+    ]
+  }
+}

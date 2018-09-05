@@ -1,0 +1,8 @@
+{
+  "passes": {
+    "filter": [
+      "assets/shaders/filters/blur.frag",
+      "assets/shaders/filters/filter.vert"
+    ]
+  }
+}
